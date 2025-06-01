@@ -91,23 +91,29 @@ export const getSupabaseAdminClient = (): SupabaseClient<Database> => {
   return supabaseAdminInstance
 }
 
-// Export instances for backward compatibility with defensive initialization
+// Export instances for backward compatibility with lazy initialization
 let _supabase: SupabaseClient<Database> | null = null
 let _supabaseAdmin: SupabaseClient<Database> | null = null
 
-export const supabase = (() => {
-  if (!_supabase) {
-    _supabase = getSupabaseClient()
+// Lazy-loaded supabase client getter
+export const supabase = new Proxy({} as SupabaseClient<Database>, {
+  get(target, prop) {
+    if (!_supabase) {
+      _supabase = getSupabaseClient()
+    }
+    return (_supabase as any)[prop]
   }
-  return _supabase
-})()
+})
 
-export const supabaseAdmin = (() => {
-  if (!_supabaseAdmin) {
-    _supabaseAdmin = getSupabaseAdminClient()
+// Lazy-loaded supabase admin client getter
+export const supabaseAdmin = new Proxy({} as SupabaseClient<Database>, {
+  get(target, prop) {
+    if (!_supabaseAdmin) {
+      _supabaseAdmin = getSupabaseAdminClient()
+    }
+    return (_supabaseAdmin as any)[prop]
   }
-  return _supabaseAdmin
-})()
+})
 
 // Re-export database types for convenience
 export type { Database } from './database-types'

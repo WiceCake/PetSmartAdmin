@@ -9,6 +9,8 @@ export default defineConfig(({ command, mode }) => {
 
   return {
     plugins: [vue()],
+    // Use relative paths for local development, absolute for production
+    base: mode === 'development' ? './' : '/',
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url))
