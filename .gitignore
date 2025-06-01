@@ -1,0 +1,258 @@
+# ===================================
+# PetSmart Admin Dashboard - .gitignore
+# ===================================
+
+# Environment Variables (CRITICAL - Contains sensitive keys)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# Node.js Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build Output
+dist/
+dist-ssr/
+build/
+out/
+
+# Vite
+.vite/
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Vue.js
+*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# IDE and Editor Files
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime Data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage Directory (Testing)
+coverage/
+*.lcov
+.nyc_output/
+
+# ESLint Cache
+.eslintcache
+
+# Prettier Cache
+.prettiercache
+
+# Package Manager Lock Files (Choose one based on your preference)
+# Uncomment the one you DON'T use:
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Temporary Folders
+tmp/
+temp/
+
+# Cache Directories
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+
+# Storybook Build Outputs
+storybook-static/
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+
+# Local Database Files
+*.sqlite
+*.sqlite3
+*.db
+
+# Backup Files
+*.backup
+*.bak
+*.tmp
+
+# Documentation Build
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+
+# Supabase Local Development
+.supabase/
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# Vercel
+.vercel/
+
+# Netlify
+.netlify/
+
+# Local Development Certificates
+*.pem
+*.key
+*.crt
+
+# Performance and Profiling
+*.cpuprofile
+*.heapprofile
+*.heapsnapshot
+
+# Security and Secrets
+secrets/
+*.secret
+*.private
+auth.json
+service-account.json
+
+# Local Configuration
+config.local.js
+config.local.ts
+
+# Test Results
+test-results/
+playwright-report/
+test-results.xml
+
+# Miscellaneous
+*.tgz
+*.tar.gz
+*.zip
+*.rar
+
+# Local Storage and Session Data
+localStorage/
+sessionStorage/
+
+# Generated API Documentation
+api-docs/
+
+# Temporary Vue Files
+*.vue.js
+*.vue.ts
+
+# Hot Module Replacement
+*.hot-update.js
+*.hot-update.json
+
+# Webpack Bundle Analyzer
+bundle-analyzer-report.html
+
+# Local HTTPS Certificates
+localhost.pem
+localhost-key.pem
+
+# Editor Directories and Files
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# MacOS
+.AppleDouble
+.LSOverride
+Icon
+
+# Windows
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ===================================
+# PROJECT SPECIFIC IGNORES
+# ===================================
+
+# Admin Dashboard Specific
+admin-logs/
+user-uploads/
+temp-exports/
+
+# Development Tools
+.eslintrc.local.js
+.prettierrc.local.js
+
+# Local Testing Data
+test-data/
+mock-data/
+fixtures/local/
+
+# Performance Monitoring
+performance-logs/
+memory-dumps/
+
+# Local Scripts
+scripts/local/
+deploy-local.sh
+
+# ===================================
+# SECURITY NOTICE
+# ===================================
+# This .gitignore includes .env files which contain:
+# - Supabase API keys and service role keys
+# - Database connection strings
+# - Authentication secrets
+# - Third-party API keys
+# 
+# NEVER commit these files to version control!
+# ===================================
