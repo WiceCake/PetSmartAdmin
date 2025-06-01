@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Notification Button Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+        }
+        .test-title {
+            color: #1976d2;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+        .test-instructions {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-left: 4px solid #1976d2;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+        .iframe-container {
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+            position: relative;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+        }
+        .size-controls {
+            margin: 10px 0;
+            text-align: center;
+        }
+        .size-btn {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            margin: 3px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .size-btn:hover {
+            background: #1565c0;
+        }
+        .size-btn.active {
+            background: #0d47a1;
+        }
+        .current-size {
+            font-weight: bold;
+            color: #1976d2;
+            margin-top: 5px;
+            font-size: 0.9rem;
+        }
+        .debug-info {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+        .test-steps {
+            list-style: none;
+            padding: 0;
+        }
+        .test-steps li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .test-steps li:before {
+            content: "✓ ";
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .issue-found {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .fix-applied {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Mobile Notification Button Test</h1>
+        
+        <div class="test-section">
+            <div class="test-title">Quick Mobile Test</div>
+            <div class="test-instructions">
+                <strong>Test Steps:</strong>
+                <ul class="test-steps">
+                    <li>Set the iframe to mobile size (320px or 480px)</li>
+                    <li>Try clicking the notification bell icon</li>
+                    <li>Check browser console for debug messages</li>
+                    <li>Verify the drawer opens/closes properly</li>
+                    <li>Test on different mobile sizes</li>
+                </ul>
+            </div>
+            
+            <div class="size-controls">
+                <button class="size-btn" onclick="resizeTest(320, 600)">320px (Small Mobile)</button>
+                <button class="size-btn" onclick="resizeTest(480, 600)">480px (Mobile)</button>
+                <button class="size-btn" onclick="resizeTest(768, 600)">768px (Tablet)</button>
+                <button class="size-btn active" onclick="resizeTest(1200, 600)">1200px (Desktop)</button>
+                <div class="current-size" id="currentSize">Current: 1200x600</div>
+            </div>
+            
+            <div class="iframe-container">
+                <iframe id="testFrame" src="http://localhost:3000" title="PetSmart Admin Dashboard"></iframe>
+            </div>
+            
+            <div class="debug-info" id="debugInfo">
+                Debug info will appear here...
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">Known Issues & Fixes</div>
+
+            <div class="issue-found">
+                <strong>Critical Issue Found:</strong> Notification drawer visible when showNotifications=false on screens < 800px.
+            </div>
+
+            <div class="fix-applied">
+                <strong>Fixes Applied:</strong>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>Added CSS to force hide drawer when not active</li>
+                    <li>Added transform: translateX(100%) for proper hiding</li>
+                    <li>Added display: none as fallback for screens < 800px</li>
+                    <li>Added absolute positioning to prevent layout issues</li>
+                    <li>Enhanced z-index and visibility controls</li>
+                </ul>
+            </div>
+            
+            <div class="test-instructions">
+                <strong>What to Check:</strong>
+                <ul>
+                    <li><strong>Primary:</strong> Drawer is completely hidden when closed on screens < 800px</li>
+                    <li>Button click events are firing (check console)</li>
+                    <li>Drawer state changes are logged with CSS debug info</li>
+                    <li>Drawer opens and stays open on mobile</li>
+                    <li>Drawer can be closed manually</li>
+                    <li>No visual artifacts or partial visibility when closed</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">Console Commands</div>
+            <div class="test-instructions">
+                Open browser console and try these commands:
+                <div class="debug-info">
+// Check current state
+console.log('Window width:', window.innerWidth);
+console.log('Is mobile:', window.innerWidth <= 768);
+
+// Force open notification drawer (if accessible)
+// This would need to be run in the iframe context
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentButtons = document.querySelectorAll('.size-btn');
+        
+        function resizeTest(width, height) {
+            const iframe = document.getElementById('testFrame');
+            const container = iframe.parentElement;
+            const debugInfo = document.getElementById('debugInfo');
+            
+            // Update iframe size
+            iframe.style.width = width + 'px';
+            iframe.style.height = height + 'px';
+            
+            // Update container to fit
+            container.style.width = width + 'px';
+            container.style.height = height + 'px';
+            
+            // Update current size display
+            document.getElementById('currentSize').textContent = `Current: ${width}x${height}`;
+            
+            // Update active button
+            currentButtons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update debug info
+            let deviceType = 'Desktop';
+            if (width <= 480) deviceType = 'Mobile';
+            else if (width <= 768) deviceType = 'Tablet';
+            
+            debugInfo.innerHTML = `
+                <strong>Test Configuration:</strong><br>
+                Width: ${width}px<br>
+                Height: ${height}px<br>
+                Device Type: ${deviceType}<br>
+                Expected Drawer Width: ${width <= 768 ? '100vw' : width <= 1024 ? '380px' : '420px'}<br>
+                <br>
+                <strong>Next Steps:</strong><br>
+                1. Click the notification bell in the iframe<br>
+                2. Check browser console for debug messages<br>
+                3. Verify drawer behavior matches expectations
+            `;
+            
+            // Log the resize for testing
+            console.log(`Test resized to: ${width}x${height} (${deviceType})`);
+        }
+
+        // Initialize with desktop size
+        window.addEventListener('load', () => {
+            resizeTest(1200, 600);
+        });
+
+        // Listen for messages from iframe (if implemented)
+        window.addEventListener('message', (event) => {
+            if (event.origin !== 'http://localhost:3000') return;
+            
+            const debugInfo = document.getElementById('debugInfo');
+            debugInfo.innerHTML += `<br><strong>Message from iframe:</strong> ${JSON.stringify(event.data)}`;
+        });
+    </script>
+</body>
+</html>
