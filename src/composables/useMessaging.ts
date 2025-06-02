@@ -2,9 +2,13 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useToast } from 'vue-toastification'
 import { supabase } from '@/config/supabase'
 import { MessagingApiService, type Conversation, type Message, type ConversationFilters } from '@/services/messagingApi'
+import { useGlobalRealtime } from '@/composables/useGlobalRealtime'
 
 export function useMessaging() {
   const toast = useToast()
+
+  // Use global real-time service for unread counts and real-time updates
+  const { unreadMessageCount: globalUnreadMessageCount } = useGlobalRealtime()
 
   // State
   const conversations = ref<Conversation[]>([])
@@ -19,18 +23,23 @@ export function useMessaging() {
     resolved: 0
   })
 
-  // Real-time subscriptions
-  let conversationsSubscription: any = null
-  let messagesSubscription: any = null
+  // Remove local real-time subscriptions - use global service instead
+  // Real-time subscriptions are now handled by the global realtimeService
 
   // Computed properties
-  const unreadConversations = computed(() => 
+  const unreadConversations = computed(() =>
     conversations.value.filter(c => c.unread_messages > 0)
   )
 
-  const totalUnreadMessages = computed(() => 
-    conversations.value.reduce((total, c) => total + c.unread_messages, 0)
-  )
+  // Use global unread count instead of local calculation
+  const totalUnreadMessages = computed(() => globalUnreadMessageCount.value)
+
+  // Keep loadUnreadMessageCount for backward compatibility but delegate to global service
+  const loadUnreadMessageCount = async () => {
+    // This is now handled by the global real-time service
+    // No need to load separately as it's automatically updated
+    return globalUnreadMessageCount.value
+  }
 
   const pendingConversations = computed(() =>
     conversations.value.filter(c => c.status === 'pending')
@@ -144,7 +153,7 @@ export function useMessaging() {
   const updateConversationStatus = async (conversationId: string, status: 'pending' | 'resolved') => {
     try {
       const { data, error } = await MessagingApiService.updateConversationStatus(conversationId, status)
-      
+
       if (error) throw error
 
       // Update local state
@@ -157,11 +166,10 @@ export function useMessaging() {
         currentConversation.value.status = status
       }
 
-      toast.success(`Conversation marked as ${status}`)
+      // Toast will be shown by the calling component
       return { data, error: null }
     } catch (error) {
-
-      toast.error('Failed to update conversation status')
+      // Error toast will be shown by the calling component
       return { data: null, error }
     }
   }
@@ -217,7 +225,7 @@ export function useMessaging() {
   const bulkUpdateStatus = async (conversationIds: string[], status: 'pending' | 'resolved') => {
     try {
       const { data, error } = await MessagingApiService.bulkUpdateStatus(conversationIds, status)
-      
+
       if (error) throw error
 
       // Update local state
@@ -228,134 +236,25 @@ export function useMessaging() {
         }
       })
 
-      toast.success(`${conversationIds.length} conversations marked as ${status}`)
+      // Toast will be shown by the calling component
       return { data, error: null }
     } catch (error) {
-
-      toast.error('Failed to update conversation status')
+      // Error toast will be shown by the calling component
       return { data: null, error }
     }
   }
 
-  // Real-time subscriptions with conversation reopening support
+  // Real-time subscriptions are now handled by the global service
+  // This method is kept for backward compatibility but does nothing
   const setupRealTimeSubscriptions = () => {
-    // Subscribe to conversation changes (including status changes from reopening)
-    conversationsSubscription = supabase
-      .channel('conversations_changes')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'conversations' },
-        (payload) => {
-
-
-          if (payload.eventType === 'UPDATE') {
-            const updatedConversation = payload.new as any
-
-            // Update conversation in local state
-            const conversationIndex = conversations.value.findIndex(c => c.id === updatedConversation.id)
-            if (conversationIndex !== -1) {
-              // Update status if it changed (e.g., from resolved to pending due to reopening)
-              if (conversations.value[conversationIndex].status !== updatedConversation.status) {
-                conversations.value[conversationIndex].status = updatedConversation.status
-
-                // Show toast notification for reopened conversations
-                if (updatedConversation.status === 'pending' && payload.old?.status === 'resolved') {
-                  toast.info('A resolved conversation has been reopened by a customer')
-                }
-              }
-
-              // Update other fields
-              conversations.value[conversationIndex].last_message_at = updatedConversation.last_message_at
-              conversations.value[conversationIndex].updated_at = updatedConversation.updated_at
-            }
-
-            // Update current conversation if viewing it
-            if (currentConversation.value?.id === updatedConversation.id) {
-              currentConversation.value.status = updatedConversation.status
-              currentConversation.value.last_message_at = updatedConversation.last_message_at
-              currentConversation.value.updated_at = updatedConversation.updated_at
-            }
-          }
-
-          // Reload stats to reflect changes
-          loadStats()
-        }
-      )
-      .subscribe()
-
-    // Subscribe to message changes (including read status updates)
-    messagesSubscription = supabase
-      .channel('messages_changes')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'messages' },
-        (payload) => {
-
-
-          if (payload.eventType === 'INSERT') {
-            const newMessage = payload.new as Message
-
-            // Add to messages if viewing this conversation
-            if (currentConversation.value?.id === newMessage.conversation_id) {
-              const existingMessage = messages.value.find(m => m.id === newMessage.id)
-              if (!existingMessage) {
-                messages.value.push(newMessage)
-              }
-            }
-
-            // Update conversation in list
-            const conversationIndex = conversations.value.findIndex(c => c.id === newMessage.conversation_id)
-            if (conversationIndex !== -1) {
-              conversations.value[conversationIndex].last_message_content = newMessage.message_content
-              conversations.value[conversationIndex].last_message_sender_type = newMessage.sender_type
-              conversations.value[conversationIndex].last_message_created_at = newMessage.created_at
-              conversations.value[conversationIndex].last_message_at = newMessage.created_at
-
-              if (newMessage.sender_type === 'user') {
-                conversations.value[conversationIndex].unread_messages += 1
-              }
-            }
-          }
-
-          if (payload.eventType === 'UPDATE') {
-            const updatedMessage = payload.new as Message
-            const oldMessage = payload.old as Message
-
-            // Handle message read status changes
-            if (updatedMessage.is_read !== oldMessage.is_read && updatedMessage.sender_type === 'user') {
-              // Update message in local state if viewing this conversation
-              if (currentConversation.value?.id === updatedMessage.conversation_id) {
-                const messageIndex = messages.value.findIndex(m => m.id === updatedMessage.id)
-                if (messageIndex !== -1) {
-                  messages.value[messageIndex].is_read = updatedMessage.is_read
-                  messages.value[messageIndex].read_at = updatedMessage.read_at
-                }
-              }
-
-              // Update conversation unread count
-              const conversationIndex = conversations.value.findIndex(c => c.id === updatedMessage.conversation_id)
-              if (conversationIndex !== -1) {
-                // Recalculate unread count for this conversation
-                // This is a simplified approach - in production you might want to query the database
-                if (updatedMessage.is_read) {
-                  conversations.value[conversationIndex].unread_messages = Math.max(0,
-                    conversations.value[conversationIndex].unread_messages - 1)
-                } else {
-                  conversations.value[conversationIndex].unread_messages += 1
-                }
-              }
-            }
-          }
-        }
-      )
-      .subscribe()
+    // Real-time subscriptions are handled by the global realtimeService
+    // Individual components no longer need to set up their own subscriptions
+    // The global service handles all real-time updates and badge counts
   }
 
   const cleanup = () => {
-    if (conversationsSubscription) {
-      supabase.removeChannel(conversationsSubscription)
-    }
-    if (messagesSubscription) {
-      supabase.removeChannel(messagesSubscription)
-    }
+    // Real-time subscriptions are handled by the global service
+    // No local cleanup needed
   }
 
   // Utility functions
@@ -406,6 +305,7 @@ export function useMessaging() {
     updateConversationStatus,
     markMessagesAsRead,
     loadStats,
+    loadUnreadMessageCount,
     bulkUpdateStatus,
     setupRealTimeSubscriptions,
     cleanup,

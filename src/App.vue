@@ -57,12 +57,14 @@ import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { connectionMonitor } from '@/services/connectionMonitor'
 import { preloadCriticalComponents } from '@/utils/lazy-loading'
+import { useGlobalRealtime } from '@/composables/useGlobalRealtime'
 import AppLayout from '@/components/layout/AppLayout.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
 const vuetifyTheme = useTheme()
+const { initialize: initializeRealtime, updateAdminUser, cleanup: cleanupRealtime } = useGlobalRealtime()
 
 const keepAliveComponents = ref([
   'DashboardView',
@@ -92,10 +94,25 @@ const getComponentKey = (route: any) => {
   return route.name || route.path
 }
 
+// Watch for auth state changes
+watch(() => authStore.adminUser?.id, async (newAdminUserId) => {
+  updateAdminUser(newAdminUserId || null)
+
+  // Initialize real-time service when admin user becomes available
+  if (newAdminUserId && authStore.isAuthenticated) {
+    await initializeRealtime()
+  }
+}, { immediate: false })
+
 onMounted(async () => {
   themeStore.initializeTheme(vuetifyTheme)
   await authStore.initialize()
   preloadCriticalComponents()
+
+  // Initialize global real-time service after auth is ready
+  if (authStore.isAuthenticated && authStore.adminUser?.id) {
+    await initializeRealtime()
+  }
 
   // if (authStore.isAuthenticated) {
   //   connectionMonitor.startMonitoring()
@@ -106,6 +123,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   // connectionMonitor.stopMonitoring()
+  cleanupRealtime()
   authStore.cleanup()
 })
 </script>

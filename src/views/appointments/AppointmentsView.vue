@@ -624,6 +624,7 @@ import { format } from 'date-fns'
 import { debounce } from 'lodash-es'
 import { ApiService } from '@/services/api'
 import { useToast } from 'vue-toastification'
+import { useGlobalRealtime } from '@/composables/useGlobalRealtime'
 import type { Database } from '@/config/supabase'
 
 // Define component name for keep-alive
@@ -651,6 +652,14 @@ interface Appointment extends AppointmentRow {
 
 const toast = useToast()
 
+// Real-time functionality
+const {
+  appointments: realtimeAppointments,
+  upcomingAppointmentCount,
+  appointmentsLoading: realtimeLoading,
+  lastAppointmentUpdate
+} = useGlobalRealtime()
+
 // Reactive state
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -661,7 +670,7 @@ const itemsPerPage = ref(10)
 
 // Search and filters
 const searchQuery = ref('')
-const selectedStatus = ref('pending')
+const selectedStatus = ref('')
 const selectedDate = ref('')
 const selectedTimeRange = ref('')
 
@@ -700,10 +709,10 @@ const headers = [
 
 // Status options for filtering (matching database constraints)
 const statusFilterOptions = [
-  { title: 'Pending', value: 'pending' },
-  { title: 'Completed', value: 'completed' },
-  { title: 'Cancelled', value: 'cancelled' },
-  { title: 'Expired', value: 'expired' }
+  { title: 'Pending', value: 'Pending' },
+  { title: 'Completed', value: 'Completed' },
+  { title: 'Cancelled', value: 'Cancelled' },
+  { title: 'Expired', value: 'Expired' }
 ]
 
 const timeRangeOptions = [
@@ -757,6 +766,70 @@ const todayCount = computed(() => {
 const hasActiveFilters = computed(() =>
   searchQuery.value || selectedStatus.value || selectedDate.value
 )
+
+// Real-time watchers
+watch(lastAppointmentUpdate, (update) => {
+  if (update) {
+    // Helper function to get pet name from local data or appointment data
+    const getPetNameFromUpdate = (appointment: any) => {
+      // First try to get from the appointment's pet relationship (if available)
+      if (appointment.pet?.name) {
+        return appointment.pet.name
+      }
+
+      // If not available, try to find in local appointments data using pet_id
+      if (appointment.pet_id) {
+        const localAppointment = appointments.value.find(apt => apt.pet_id === appointment.pet_id)
+        if (localAppointment?.pet?.name) {
+          return localAppointment.pet.name
+        }
+      }
+
+      // Fallback: try to find by appointment ID in local data
+      if (appointment.id) {
+        const localAppointment = appointments.value.find(apt => apt.id === appointment.id)
+        if (localAppointment?.pet?.name) {
+          return localAppointment.pet.name
+        }
+      }
+
+      // Last resort: return a generic message
+      return 'a pet'
+    }
+
+    // Show toast notification for new appointments
+    if (update.type === 'INSERT') {
+      const petName = getPetNameFromUpdate(update.appointment)
+      toast.info(`New appointment scheduled for ${petName}`, {
+        timeout: 5000
+      })
+    } else if (update.type === 'UPDATE') {
+      const petName = getPetNameFromUpdate(update.appointment)
+      toast.success(`Appointment for ${petName} status updated to ${update.appointment.status}`, {
+        timeout: 4000
+      })
+    }
+
+    // Refresh the current page data to show updates
+    loadAppointments()
+  }
+}, { deep: true })
+
+// Watch for real-time appointments data changes
+watch(realtimeAppointments, (newAppointments) => {
+  // If we're on the first page and not filtering, use real-time data
+  if (page.value === 1 && !searchQuery.value && !selectedStatus.value && !selectedDate.value) {
+    appointments.value = newAppointments.slice(0, itemsPerPage.value)
+  }
+}, { deep: true })
+
+// Watch for upcoming appointment count changes to update stats
+watch(upcomingAppointmentCount, (newCount) => {
+  if (pendingCount.value !== undefined) {
+    // Update pending count in computed property
+    loadAppointments()
+  }
+})
 
 // Debounced search function
 const debouncedSearch = debounce(() => {
@@ -989,8 +1062,7 @@ const markAsCompleted = async (appointment: Appointment) => {
       appointments.value[appointmentIndex].updating = false
     }
 
-    // Show success toast
-    toast.success(`Appointment completed for ${petName}`)
+    // Success toast will be shown by real-time watcher
 
     // Refresh the appointments list
     await loadAppointments()
@@ -1027,8 +1099,7 @@ const markAsCancelled = async (appointment: Appointment) => {
       appointments.value[appointmentIndex].updating = false
     }
 
-    // Show warning toast
-    toast.warning(`Appointment cancelled for ${petName}`)
+    // Success toast will be shown by real-time watcher
 
     // Refresh the appointments list
     await loadAppointments()
@@ -1044,7 +1115,7 @@ const markAsCancelled = async (appointment: Appointment) => {
 
 const resetFilters = () => {
   searchQuery.value = ''
-  selectedStatus.value = 'pending'
+  selectedStatus.value = ''
   selectedDate.value = ''
   selectedTimeRange.value = ''
   page.value = 1

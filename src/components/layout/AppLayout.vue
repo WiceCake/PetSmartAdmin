@@ -246,13 +246,14 @@
             variant="text"
             class="action-btn notification-btn"
             @click="toggleNotifications"
-            :aria-label="`Notifications${totalUnreadCount > 0 ? ` (${totalUnreadCount} unread)` : ''}`"
+            :aria-label="`Notifications${notificationBadgeCount > 0 ? ` (${notificationBadgeCount} unread)` : ''}`"
             role="button"
             tabindex="0"
+            :title="`Debug: N:${realUnreadCount} M:${totalUnreadMessages} Badge:${notificationBadgeCount} T:${totalUnreadCount}`"
           >
             <v-badge
-              v-if="totalUnreadCount > 0"
-              :content="totalUnreadCount"
+              v-if="notificationBadgeCount > 0"
+              :content="notificationBadgeCount"
               color="error"
               floating
               class="notification-badge"
@@ -261,6 +262,16 @@
             </v-badge>
             <v-icon v-else size="20">mdi-bell-outline</v-icon>
           </v-btn>
+
+          <!-- Reload page button -->
+          <v-btn
+            icon="mdi-refresh"
+            variant="text"
+            size="small"
+            @click="forceRefreshBadges"
+            title="Reload current page"
+            class="ml-2"
+          />
         </div>
       </div>
     </v-app-bar>
@@ -300,8 +311,8 @@
           <div class="notifications-header__title-section">
             <h2 class="notifications-header__title">Notifications</h2>
             <v-chip
-              v-if="totalUnreadCount > 0"
-              :text="totalUnreadCount.toString()"
+              v-if="notificationBadgeCount > 0"
+              :text="notificationBadgeCount.toString()"
               color="error"
               size="small"
               class="notifications-header__badge"
@@ -721,8 +732,7 @@ import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
 import { useToast } from 'vue-toastification'
 import { ApiService } from '@/services/api'
 import { useRoleAccess } from '@/composables/useRoleAccess'
-import { useNotifications } from '@/composables/useNotifications'
-import { useMessaging } from '@/composables/useMessaging'
+import { useGlobalRealtime } from '@/composables/useGlobalRealtime'
 
 const route = useRoute()
 const router = useRouter()
@@ -732,28 +742,30 @@ const themeStore = useThemeStore()
 const sidebarStore = useSidebarStore()
 const toast = useToast()
 const { permissions, visibleNavItems } = useRoleAccess()
+
+// Use global real-time service for notifications, messages, orders, and appointments
 const {
   notifications: realNotifications,
-  unreadCount: realUnreadCount,
-  loading: notificationsLoading,
-  loadNotifications,
-  markAsRead,
-  markAllAsRead: markAllNotificationsAsRead,
+  unreadNotificationCount: realUnreadCount,
+  unreadMessageCount: totalUnreadMessages,
+  pendingOrderCount,
+  upcomingAppointmentCount,
+  notificationBadgeCount,
+  totalUnreadCount,
+  notificationsLoading,
+  isConnected: realtimeConnected,
+  markNotificationAsRead: markAsRead,
+  markAllNotificationsAsRead,
   deleteNotification: deleteRealNotification,
+  createTestNotification,
+  createTestMessage,
+  forceRefresh,
   getNotificationIcon,
   getNotificationColor,
   getPriorityIcon,
   getPriorityColor,
   formatTimeAgo
-} = useNotifications()
-
-// Use messaging composable for unread message count
-const {
-  totalUnreadMessages,
-  loadConversations,
-  setupRealTimeSubscriptions: setupMessagingSubscriptions,
-  cleanup: cleanupMessaging
-} = useMessaging()
+} = useGlobalRealtime()
 
 // Profile modal state
 const showProfileModal = ref(false)
@@ -834,10 +846,7 @@ const drawerNotifications = computed(() => {
   return realNotifications.value.slice(0, 5)
 })
 
-// Combined unread count for notification badge (admin notifications + unread messages)
-const totalUnreadCount = computed(() => {
-  return realUnreadCount.value + totalUnreadMessages.value
-})
+// totalUnreadCount is now provided by the global real-time service
 
 // Old notification data removed - now using real notifications from composable
 
@@ -1145,6 +1154,11 @@ const closeNotifications = () => {
   showNotifications.value = false
 }
 
+// Reload current page
+const forceRefreshBadges = () => {
+  window.location.reload()
+}
+
 // deleteNotification is now handled by the composable (deleteRealNotification)
 
 const handleNotificationAction = (notification: any) => {
@@ -1225,20 +1239,8 @@ onMounted(async () => {
   // Initialize sidebar store with current window width
   sidebarStore.initialize(windowWidth.value)
 
-  // Load notifications (limit to 5 for drawer performance)
-  try {
-    await loadNotifications(1, 5)
-  } catch (error) {
-    // Silent fail for notifications loading
-  }
-
-  // Setup messaging real-time subscriptions for unread message count
-  try {
-    await loadConversations(1, 50)
-    setupMessagingSubscriptions()
-  } catch (error) {
-    // Silent fail for messaging setup
-  }
+  // Global real-time service is initialized in App.vue
+  // No need to set up subscriptions here anymore
 
   // Add window resize listener
   window.addEventListener('resize', handleResize)
@@ -1255,12 +1257,7 @@ onUnmounted(() => {
   // Save scroll position before unmounting
   saveScrollPosition()
 
-  // Clean up messaging subscriptions
-  try {
-    cleanupMessaging()
-  } catch (error) {
-    // Silent fail for cleanup
-  }
+  // Global real-time service cleanup is handled in App.vue
 
   // Clean up resize timeout
   if (resizeTimeout) {

@@ -403,14 +403,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import { debounce } from 'lodash-es'
 import { ApiService } from '@/services/api'
+import { useGlobalRealtime } from '@/composables/useGlobalRealtime'
 
 const router = useRouter()
 const toast = useToast()
+
+// Real-time functionality
+const {
+  orders: realtimeOrders,
+  pendingOrderCount,
+  ordersLoading: realtimeLoading,
+  lastOrderUpdate
+} = useGlobalRealtime()
 
 // Reactive data
 const orders = ref<any[]>([])
@@ -479,6 +488,40 @@ const itemsPerPageOptions = [
 
 // Computed properties
 const totalPages = computed(() => Math.ceil(totalOrders.value / itemsPerPage.value))
+
+// Real-time watchers
+watch(lastOrderUpdate, (update) => {
+  if (update) {
+    // Show toast notification for new orders
+    if (update.type === 'INSERT') {
+      toast.info(`New order received: #${update.order.id.slice(-8)}`, {
+        timeout: 5000
+      })
+    } else if (update.type === 'UPDATE') {
+      toast.success(`Order #${update.order.id.slice(-8)} status updated to ${update.order.status}`, {
+        timeout: 4000
+      })
+    }
+
+    // Refresh the current page data to show updates
+    loadOrders()
+  }
+}, { deep: true })
+
+// Watch for real-time orders data changes
+watch(realtimeOrders, (newOrders) => {
+  // If we're on the first page and not filtering, use real-time data
+  if (currentPage.value === 1 && !searchQuery.value && !selectedStatus.value && !dateFrom.value && !dateTo.value) {
+    orders.value = newOrders.slice(0, itemsPerPage.value)
+  }
+}, { deep: true })
+
+// Watch for pending order count changes to update stats
+watch(pendingOrderCount, (newCount) => {
+  if (orderStats.value[1]) {
+    orderStats.value[1].value = newCount.toString()
+  }
+})
 
 // Methods
 const loadOrders = async () => {
@@ -690,7 +733,7 @@ const confirmStatusUpdate = async () => {
       return
     }
 
-    toast.success('Order status updated successfully')
+    // Success toast will be shown by real-time watcher
     showStatusDialog.value = false
     statusNotes.value = ''
     await loadOrders()
@@ -830,7 +873,7 @@ const generateCSVContent = (orders: any[]) => {
     headers.join(','),
     ...orders.map(order => {
       const customerName = getCustomerName(order.user)
-      const customerEmail = order.user?.email || ''
+      const customerEmail = order.user?.email || order.user?.username || 'N/A'
       const orderDate = formatDate(order.created_at)
       const itemsCount = order.items?.length || 0
 

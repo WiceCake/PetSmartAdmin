@@ -498,6 +498,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import { useMessaging } from '@/composables/useMessaging'
+import { useGlobalRealtime } from '@/composables/useGlobalRealtime'
 import { debounce } from 'lodash-es'
 import type { Conversation } from '@/services/messagingApi'
 
@@ -518,6 +519,12 @@ const {
   getStatusColor,
   formatTimeAgo
 } = useMessaging()
+
+// Use global real-time service for real-time updates
+const {
+  lastConversationUpdate,
+  lastMessageUpdate
+} = useGlobalRealtime()
 
 // Local state - Simplified
 const searchQuery = ref('')
@@ -759,6 +766,29 @@ onUnmounted(() => {
 // Watch for filter changes - Simplified
 watch([statusFilter], () => {
   applyFilters()
+})
+
+// Watch for real-time conversation updates
+watch(lastConversationUpdate, (update) => {
+  if (update && update.type === 'UPDATE') {
+    // Check if conversation was reopened
+    if (update.conversation.status === 'pending' && update.oldConversation.status === 'resolved') {
+      toast.info('A resolved conversation has been reopened by a customer')
+    }
+
+    // Refresh conversations to show updated data
+    loadConversationsWithFilters()
+    loadStats()
+  }
+})
+
+// Watch for real-time message updates
+watch(lastMessageUpdate, (update) => {
+  if (update && update.type === 'INSERT') {
+    // New message received - refresh conversations to update last message info
+    loadConversationsWithFilters()
+    loadStats()
+  }
 })
 </script>
 

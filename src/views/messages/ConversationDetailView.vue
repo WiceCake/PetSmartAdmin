@@ -158,6 +158,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import { useMessaging } from '@/composables/useMessaging'
 import { useAuthStore } from '@/stores/auth'
+import { useGlobalRealtime } from '@/composables/useGlobalRealtime'
 
 const route = useRoute()
 const router = useRouter()
@@ -183,6 +184,12 @@ const {
   getStatusColor,
   formatTimeAgo
 } = useMessaging()
+
+// Use global real-time service for real-time updates
+const {
+  lastConversationUpdate,
+  lastMessageUpdate
+} = useGlobalRealtime()
 
 // Local state - Simplified
 const newMessage = ref('')
@@ -263,6 +270,45 @@ onMounted(async () => {
 
 onUnmounted(() => {
   cleanup()
+})
+
+// Watch for real-time conversation updates
+watch(lastConversationUpdate, (update) => {
+  if (update && update.type === 'UPDATE' && update.conversation.id === conversationId.value) {
+    // Update current conversation
+    if (conversation.value) {
+      conversation.value.status = update.conversation.status
+      conversation.value.last_message_at = update.conversation.last_message_at
+      conversation.value.updated_at = update.conversation.updated_at
+    }
+
+    // Show toast if conversation was reopened
+    if (update.conversation.status === 'pending' && update.oldConversation.status === 'resolved') {
+      toast.info('This conversation has been reopened by the customer')
+    }
+  }
+})
+
+// Watch for real-time message updates
+watch(lastMessageUpdate, (update) => {
+  if (update && update.type === 'INSERT' && update.message.conversation_id === conversationId.value) {
+    // Add new message to the list if it's not already there
+    const existingMessage = messages.value.find(m => m.id === update.message.id)
+    if (!existingMessage) {
+      messages.value.push(update.message)
+
+      // Scroll to bottom after adding new message
+      nextTick(() => {
+        scrollToBottom()
+      })
+    }
+  } else if (update && update.type === 'UPDATE' && update.message.conversation_id === conversationId.value) {
+    // Update existing message (e.g., read status)
+    const messageIndex = messages.value.findIndex(m => m.id === update.message.id)
+    if (messageIndex !== -1) {
+      messages.value[messageIndex] = { ...messages.value[messageIndex], ...update.message }
+    }
+  }
 })
 
 // Watch for new messages and scroll to bottom

@@ -12,6 +12,7 @@
             <p class="page-subtitle">Monitor and manage all system notifications and alerts</p>
           </div>
           <div class="header-actions">
+
             <v-btn
               v-if="unreadNotifications.length > 0"
               color="secondary"
@@ -345,32 +346,31 @@
                     <v-icon :icon="getNotificationIcon(item.type)" />
                   </v-avatar>
                   <div class="notification-content">
-                    <div class="d-flex align-center mb-1">
-                      <div class="notification-title font-weight-medium text-body-1 me-2">
-                        {{ item.title }}
-                      </div>
-                      <v-chip
-                        v-if="item.priority === 'high'"
-                        :color="getPriorityColor(item.priority)"
-                        size="x-small"
-                        variant="tonal"
-                      >
-                        <v-icon start size="10">{{ getPriorityIcon(item.priority) }}</v-icon>
-                        High
-                      </v-chip>
+                    <div class="notification-title font-weight-medium text-body-1 mb-1">
+                      {{ item.title }}
                     </div>
                     <div class="notification-message text-body-2 text-medium-emphasis mb-1">
                       {{ item.message }}
                     </div>
-                    <div class="notification-meta d-flex align-center gap-2">
+                    <div class="notification-meta d-flex align-center gap-4">
                       <v-chip
                         :color="getNotificationColor(item.type)"
                         size="x-small"
                         variant="tonal"
+                        class="me-1"
                       >
                         {{ item.category }}
                       </v-chip>
-                      <span class="text-caption text-medium-emphasis">
+                      <v-chip
+                        :color="getPriorityColor(item.priority)"
+                        size="x-small"
+                        variant="tonal"
+                        class="me-1"
+                      >
+                        <v-icon start size="10">{{ getPriorityIcon(item.priority) }}</v-icon>
+                        {{ item.priority.charAt(0).toUpperCase() + item.priority.slice(1) }}
+                      </v-chip>
+                      <span class="text-caption text-medium-emphasis ml-2">
                         {{ formatTimeAgo(item.created_at) }}
                       </span>
                     </div>
@@ -531,30 +531,28 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
-import { useNotifications } from '@/composables/useNotifications'
+import { useGlobalRealtime } from '@/composables/useGlobalRealtime'
 import { debounce } from 'lodash-es'
 
 const router = useRouter()
 const toast = useToast()
 
-// Use the notifications composable
+// Use global real-time service
 const {
   notifications,
-  unreadCount,
-  loading,
-  unreadNotifications,
-  notificationsByPriority,
-  loadNotifications,
-  markAsRead,
-  markAllAsRead: markAllNotificationsAsRead,
+  unreadNotificationCount: unreadCount,
+  notificationsLoading: loading,
+  lastNotificationUpdate,
+  markNotificationAsRead: markAsRead,
+  markAllNotificationsAsRead,
   deleteNotification,
-  bulkDelete,
+  forceRefresh,
   getNotificationIcon,
   getNotificationColor,
   getPriorityIcon,
   getPriorityColor,
   formatTimeAgo
-} = useNotifications()
+} = useGlobalRealtime()
 
 // Local state
 const searchQuery = ref('')
@@ -572,6 +570,7 @@ const error = ref<string | null>(null)
 const markingAllAsRead = ref(false)
 const bulkMarkingAsRead = ref(false)
 const bulkDeleting = ref(false)
+// creatingTestNotification is handled by the global service
 
 // Filter options
 const typeFilterOptions = [
@@ -664,6 +663,17 @@ const totalPages = computed(() => {
   return Math.ceil(filteredNotifications.value.length / itemsPerPage.value)
 })
 
+// Add missing computed properties for compatibility
+const unreadNotifications = computed(() =>
+  notifications.value.filter(n => !n.is_read)
+)
+
+const notificationsByPriority = computed(() => ({
+  high: notifications.value.filter(n => n.priority === 'high'),
+  medium: notifications.value.filter(n => n.priority === 'medium'),
+  low: notifications.value.filter(n => n.priority === 'low')
+}))
+
 const todayNotifications = computed(() => {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -676,14 +686,10 @@ const todayNotifications = computed(() => {
 
 // Methods
 const refreshNotifications = async () => {
-  try {
-    await loadNotifications(1, 100) // Load more notifications for the page
-    toast.success('Notifications refreshed')
-  } catch (error) {
-
-    toast.error('Failed to refresh notifications')
-  }
+  await forceRefresh()
 }
+
+// createTestNotification is now provided by the global real-time service
 
 const handleMarkAllAsRead = async () => {
   if (unreadNotifications.value.length === 0) return
@@ -692,7 +698,7 @@ const handleMarkAllAsRead = async () => {
   try {
     const { error } = await markAllNotificationsAsRead()
     if (error) throw error
-    // Toast is shown in the composable
+    toast.success('All notifications marked as read')
   } catch (error) {
     toast.error('Failed to mark all notifications as read')
   } finally {
@@ -714,9 +720,8 @@ const handleDeleteNotification = async (notificationId: string) => {
   try {
     const { error } = await deleteNotification(notificationId)
     if (error) throw error
-    toast.success('Notification deleted')
+    // Toast notification will be shown by real-time watcher
   } catch (error) {
-
     toast.error('Failed to delete notification')
   }
 }
@@ -745,12 +750,13 @@ const handleBulkDelete = async () => {
 
   bulkDeleting.value = true
   try {
-    const { error } = await bulkDelete(selectedNotifications.value)
-    if (error) throw error
-    // Toast is shown in the composable
+    // Delete each selected notification individually
+    for (const notificationId of selectedNotifications.value) {
+      await deleteNotification(notificationId)
+    }
+    toast.success(`${selectedNotifications.value.length} notifications deleted`)
     clearSelection()
   } catch (error) {
-
     toast.error('Failed to delete notifications')
   } finally {
     bulkDeleting.value = false
@@ -877,13 +883,33 @@ watch(paginatedNotifications, () => {
   }
 })
 
-// Lifecycle
-onMounted(async () => {
-  try {
-    await loadNotifications(1, 100) // Load initial notifications
-  } catch (err) {
-    error.value = 'Failed to load notifications'
+// Watch for real-time notification updates
+watch(lastNotificationUpdate, (update) => {
+  if (update) {
+    if (update.type === 'DELETE') {
+      // Show toast notification for successful delete
+      toast.success('Notification deleted successfully')
+
+      // Clear selection if deleted notification was selected
+      if (selectedNotifications.value.includes(update.notification.id)) {
+        selectedNotifications.value = selectedNotifications.value.filter(id => id !== update.notification.id)
+      }
+    } else if (update.type === 'INSERT') {
+      // Show toast for new notifications (optional)
+      if (update.notification.priority === 'high') {
+        toast.info(`New ${update.notification.priority} priority notification: ${update.notification.title}`)
+      }
+    } else if (update.type === 'UPDATE') {
+      // Handle notification updates (like mark as read)
+      // No toast needed as this is handled by the mark as read action
+    }
   }
+}, { deep: true })
+
+// Lifecycle - notifications are loaded by the global real-time service
+onMounted(async () => {
+  // Global real-time service handles data loading
+  // No need to load notifications here
 })
 </script>
 

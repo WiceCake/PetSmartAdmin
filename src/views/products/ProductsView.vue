@@ -1687,6 +1687,55 @@ onMounted(() => {
   color: rgba(255, 255, 255, 0.6);
 }
 
+/* Dark Mode - Image Upload Sections */
+.v-theme--dark .upload-section-title {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.v-theme--dark .upload-section-description {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.v-theme--dark .thumbnail-upload-area,
+.v-theme--dark .multiple-upload-area {
+  border-color: rgba(var(--v-theme-primary), 0.4);
+  background: rgba(var(--v-theme-primary), 0.08);
+}
+
+.v-theme--dark .thumbnail-upload-area:hover,
+.v-theme--dark .multiple-upload-area:hover {
+  border-color: rgba(var(--v-theme-primary), 0.6);
+  background: rgba(var(--v-theme-primary), 0.12);
+}
+
+.v-theme--dark .existing-images-section {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.v-theme--dark .existing-images-title {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.v-theme--dark .preview-card {
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border: 1px solid rgba(var(--v-theme-outline), 0.2);
+}
+
+.v-theme--dark .preview-card:hover {
+  background: rgba(var(--v-theme-surface-variant), 0.4);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Dark Mode - Dialog Header Enhancement */
+.v-theme--dark .dialog-header {
+  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.15) 0%, rgba(var(--v-theme-primary), 0.08) 100%);
+  border-bottom-color: rgba(var(--v-theme-primary), 0.2);
+}
+
+.v-theme--dark .header-divider {
+  border-color: rgba(var(--v-theme-primary), 0.2);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .products-view {

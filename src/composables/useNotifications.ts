@@ -1,8 +1,8 @@
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useToast } from 'vue-toastification'
 import { ApiService } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
-import { supabaseAdmin } from '@/config/supabase'
+import { supabase } from '@/config/supabase'
 
 export interface AdminNotification {
   id: string
@@ -30,7 +30,6 @@ export const useNotifications = () => {
   const notifications = ref<AdminNotification[]>([])
   const unreadCount = ref(0)
   const loading = ref(false)
-  const realtimeSubscription = ref<any>(null)
 
   // Computed
   const unreadNotifications = computed(() => 
@@ -174,91 +173,8 @@ export const useNotifications = () => {
     }
   }
 
-  // Real-time subscription
-  const subscribeToNotifications = () => {
-    if (!authStore.adminUser?.id || realtimeSubscription.value) return
-
-    realtimeSubscription.value = supabaseAdmin
-      .channel('admin_notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'admin_notifications',
-          filter: `admin_user_id=eq.${authStore.adminUser.id}`
-        },
-        (payload) => {
-          const newNotification = payload.new as AdminNotification
-
-          // Add to notifications list
-          notifications.value.unshift(newNotification)
-
-          // Update unread count
-          if (!newNotification.is_read) {
-            unreadCount.value += 1
-          }
-
-          // Show toast notification for high priority
-          if (newNotification.priority === 'high') {
-            toast.error(newNotification.title, {
-              timeout: 8000,
-              closeOnClick: true,
-              pauseOnFocusLoss: false,
-              pauseOnHover: true,
-              draggable: true,
-              showCloseButtonOnHover: false,
-              hideProgressBar: false,
-              closeButton: "button",
-              icon: "🚨",
-              rtl: false
-            })
-          } else if (newNotification.priority === 'medium') {
-            toast.info(newNotification.title, {
-              timeout: 5000
-            })
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'admin_notifications',
-          filter: `admin_user_id=eq.${authStore.adminUser.id}`
-        },
-        (payload) => {
-
-          const updatedNotification = payload.new as AdminNotification
-
-          // Update local notification
-          const index = notifications.value.findIndex(n => n.id === updatedNotification.id)
-          if (index > -1) {
-            const oldNotification = notifications.value[index]
-            notifications.value[index] = updatedNotification
-
-            // Update unread count if read status changed
-            if (oldNotification.is_read !== updatedNotification.is_read) {
-              if (updatedNotification.is_read) {
-                unreadCount.value = Math.max(0, unreadCount.value - 1)
-              } else {
-                unreadCount.value += 1
-              }
-            }
-          }
-        }
-      )
-      .subscribe()
-  }
-
-  const unsubscribeFromNotifications = () => {
-    if (realtimeSubscription.value) {
-
-      supabaseAdmin.removeChannel(realtimeSubscription.value)
-      realtimeSubscription.value = null
-    }
-  }
+  // Note: Real-time subscriptions are now handled by the global real-time service
+  // to prevent conflicts and ensure consistent state across all components
 
   // Utility functions
   const getNotificationIcon = (type: string) => {
@@ -312,17 +228,8 @@ export const useNotifications = () => {
     return date.toLocaleDateString()
   }
 
-  // Lifecycle
-  onMounted(() => {
-    if (authStore.adminUser?.id) {
-      loadUnreadCount()
-      subscribeToNotifications()
-    }
-  })
-
-  onUnmounted(() => {
-    unsubscribeFromNotifications()
-  })
+  // Note: Lifecycle management is handled by the consuming component (AppLayout)
+  // to avoid conflicts with multiple instances of the composable
 
   return {
     // State
@@ -341,8 +248,6 @@ export const useNotifications = () => {
     markAllAsRead,
     deleteNotification,
     bulkDelete,
-    subscribeToNotifications,
-    unsubscribeFromNotifications,
     
     // Utilities
     getNotificationIcon,
