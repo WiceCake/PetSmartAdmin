@@ -15,6 +15,9 @@ export const useAuthStore = defineStore('auth', () => {
   // Store auth state change subscription for cleanup
   let authStateSubscription: { data: { subscription: { unsubscribe: () => void } } } | null = null
 
+  // Track initialization promise to prevent multiple concurrent initializations
+  let initializationPromise: Promise<void> | null = null
+
   const isAuthenticated = computed(() => !!user.value && !!session.value)
   const isAdmin = computed(() => !!adminUser.value && adminUser.value.is_active)
   const hasValidSession = computed(() => {
@@ -25,101 +28,113 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Initialize auth state with timeout protection
   const initialize = async () => {
+    // If already initialized, return immediately
     if (initialized.value) {
-      return // Prevent multiple initializations
+
+      return
     }
 
+    // If initialization is already in progress, wait for it
+    if (initializationPromise) {
+
+      await initializationPromise
+      return
+    }
+
+    // Start new initialization
     loading.value = true
     sessionExpired.value = false
 
-    // Add timeout protection to prevent hanging
-    const initTimeout = setTimeout(() => {
-      console.warn('Auth initialization timeout, forcing completion')
-      loading.value = false
-      initialized.value = true
-    }, 5000) // 5 second timeout
+    // Create initialization promise
+    initializationPromise = (async () => {
+      // Add timeout protection to prevent hanging
+      const initTimeout = setTimeout(() => {
+        loading.value = false
+        initialized.value = true
+      }, 8000) // 8 second timeout
 
-    try {
-      // Get current session
-      const { data: { session: currentSession }, error } = await supabase.auth.getSession()
+      try {
+        // Get current session
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession()
 
-      if (error) {
-        console.error('Session retrieval error:', error)
-        await handleSessionExpiration()
-        return
-      }
+        if (error) {
 
-      if (currentSession) {
-        // Set session first so hasValidSession can check it
-        session.value = currentSession
-        user.value = currentSession.user
-
-        // Validate session expiration
-        if (!hasValidSession.value) {
-          console.log('Session expired, clearing auth state')
           await handleSessionExpiration()
           return
         }
 
-        // Check admin status
-        const isAdminUser = await checkAdminStatus()
-        if (!isAdminUser) {
-          console.log('User is not an admin, signing out')
-          await signOut()
-          return
-        }
-      }
+        if (currentSession) {
+          // Set session first so hasValidSession can check it
+          session.value = currentSession
+          user.value = currentSession.user
 
-      // Clean up existing listener
-      if (authStateSubscription) {
-        authStateSubscription.data.subscription.unsubscribe()
-      }
+          // Validate session expiration
+          if (!hasValidSession.value) {
+            await handleSessionExpiration()
+            return
+          }
 
-      // Listen for auth changes
-      authStateSubscription = supabase.auth.onAuthStateChange(async (event, newSession) => {
-        console.log('Auth state change:', event, newSession?.user?.email)
-
-        // Handle different auth events
-        if (event === 'SIGNED_OUT') {
-          session.value = null
-          user.value = null
-          adminUser.value = null
-          sessionExpired.value = false
-          console.log('User signed out, cleared auth state')
-          return
-        }
-
-        if (event === 'TOKEN_REFRESHED') {
-          console.log('Token refreshed, updating session')
-        }
-
-        // Update session and user for all other events
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          session.value = newSession
-          user.value = newSession?.user || null
-
-          if (newSession?.user) {
-            const isAdminUser = await checkAdminStatus()
-            if (!isAdminUser) {
-              console.log('User does not have admin privileges, signing out')
-              await signOut()
-              return
-            }
-            console.log('Auth state updated successfully')
-          } else {
-            adminUser.value = null
+          // Check admin status
+          const isAdminUser = await checkAdminStatus()
+          if (!isAdminUser) {
+            await signOut()
+            return
           }
         }
-      })
 
-      initialized.value = true
-    } catch (error) {
-      console.error('Auth initialization error:', error)
-      await handleSessionExpiration()
-    } finally {
-      clearTimeout(initTimeout) // Clear the timeout
-      loading.value = false
-    }
+        // Clean up existing listener
+        if (authStateSubscription) {
+          authStateSubscription.data.subscription.unsubscribe()
+        }
+
+        // Listen for auth changes
+        authStateSubscription = supabase.auth.onAuthStateChange(async (event, newSession) => {
+
+
+          // Handle different auth events
+          if (event === 'SIGNED_OUT') {
+            session.value = null
+            user.value = null
+            adminUser.value = null
+            sessionExpired.value = false
+
+            return
+          }
+
+          if (event === 'TOKEN_REFRESHED') {
+
+          }
+
+          // Update session and user for all other events
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            session.value = newSession
+            user.value = newSession?.user || null
+
+            if (newSession?.user) {
+              const isAdminUser = await checkAdminStatus()
+              if (!isAdminUser) {
+                await signOut()
+                return
+              }
+            } else {
+              adminUser.value = null
+            }
+          }
+        })
+
+        initialized.value = true
+      } catch (error) {
+
+        await handleSessionExpiration()
+      } finally {
+        clearTimeout(initTimeout)
+        loading.value = false
+        initializationPromise = null
+      }
+    })()
+
+    // Wait for the initialization to complete
+    await initializationPromise
   }
 
   // Handle session expiration
@@ -133,7 +148,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await supabase.auth.signOut()
     } catch (error) {
-      console.error('Error during session cleanup:', error)
+
     }
   }
 
@@ -144,7 +159,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       sessionStorage.setItem('auth-redirect-url', url)
     } catch (error) {
-      console.warn('Failed to store redirect URL:', error)
+
     }
   }
 
@@ -160,7 +175,7 @@ export const useAuthStore = defineStore('auth', () => {
           url = storedUrl
         }
       } catch (error) {
-        console.warn('Failed to retrieve redirect URL:', error)
+
       }
     }
 
@@ -169,7 +184,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       sessionStorage.removeItem('auth-redirect-url')
     } catch (error) {
-      console.warn('Failed to clear redirect URL:', error)
+
     }
 
     return url
@@ -195,7 +210,7 @@ export const useAuthStore = defineStore('auth', () => {
       adminUser.value = data
       return !!data
     } catch (error) {
-      console.error('Admin status check error:', error)
+
       adminUser.value = null
       return false
     }
@@ -203,8 +218,17 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Sign in
   const signIn = async (email: string, password: string) => {
+    // Prevent concurrent login attempts
+    if (loading.value) {
+
+      return { success: false, error: 'Login already in progress' }
+    }
+
     loading.value = true
+    sessionExpired.value = false
+
     try {
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -230,18 +254,16 @@ export const useAuthStore = defineStore('auth', () => {
 
         // Double-check that all auth state is properly set
         if (!isAuthenticated.value || !isAdmin.value) {
-          console.error('Auth state not properly set after login')
           await signOut()
           throw new Error('Authentication state error. Please try again.')
         }
 
-        console.log('Successfully signed in!')
         return { success: true }
       } else {
         throw new Error('No user data returned from authentication')
       }
     } catch (error: any) {
-      console.error('Sign in failed:', error.message)
+
       return { success: false, error: error.message }
     } finally {
       loading.value = false
@@ -258,9 +280,9 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = null
       session.value = null
       adminUser.value = null
-      console.log('Successfully signed out!')
+
     } catch (error: any) {
-      console.error('Sign out failed:', error.message)
+
     } finally {
       loading.value = false
     }
@@ -274,10 +296,10 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (error) throw error
 
-      console.log('Password reset email sent!')
+
       return { success: true }
     } catch (error: any) {
-      console.error('Password reset failed:', error.message)
+
       return { success: false, error: error.message }
     } finally {
       loading.value = false
@@ -294,10 +316,10 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (error) throw error
 
-      console.log('Password updated successfully!')
+
       return { success: true }
     } catch (error: any) {
-      console.error('Password update failed:', error.message)
+
       return { success: false, error: error.message }
     } finally {
       loading.value = false
@@ -307,11 +329,11 @@ export const useAuthStore = defineStore('auth', () => {
   // Refresh session manually
   const refreshSession = async () => {
     try {
-      console.log('🔄 Manually refreshing session...')
+
       const { data, error } = await supabase.auth.refreshSession()
 
       if (error) {
-        console.error('Session refresh failed:', error)
+
         await handleSessionExpiration()
         return false
       }
@@ -319,13 +341,13 @@ export const useAuthStore = defineStore('auth', () => {
       if (data.session) {
         session.value = data.session
         user.value = data.session.user
-        console.log('✅ Session refreshed successfully')
+
         return true
       }
 
       return false
     } catch (error) {
-      console.error('Session refresh error:', error)
+
       await handleSessionExpiration()
       return false
     }
@@ -334,13 +356,13 @@ export const useAuthStore = defineStore('auth', () => {
   // Recover from connection issues
   const recoverConnection = async () => {
     try {
-      console.log('🔄 Attempting connection recovery...')
+
 
       // First try to get current session
       const { data: { session: currentSession }, error } = await supabase.auth.getSession()
 
       if (error) {
-        console.error('Session recovery failed:', error)
+
         await handleSessionExpiration()
         return false
       }
@@ -348,7 +370,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (currentSession) {
         // Validate session
         if (!hasValidSession.value) {
-          console.log('Session expired during recovery')
+
           await handleSessionExpiration()
           return false
         }
@@ -360,7 +382,7 @@ export const useAuthStore = defineStore('auth', () => {
         // Verify admin status
         const isAdminUser = await checkAdminStatus()
         if (!isAdminUser) {
-          console.log('Admin status lost during recovery')
+
           await signOut()
           return false
         }
@@ -368,15 +390,15 @@ export const useAuthStore = defineStore('auth', () => {
         // Force reactivity update
         await nextTick()
 
-        console.log('✅ Connection recovered successfully')
+
         return true
       }
 
-      console.log('No session found during recovery')
+
       await handleSessionExpiration()
       return false
     } catch (error) {
-      console.error('Connection recovery failed:', error)
+
       await handleSessionExpiration()
       return false
     }
@@ -391,7 +413,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       // Check if session is still valid
       if (!hasValidSession.value) {
-        console.log('Session validation failed: expired')
+
         await handleSessionExpiration()
         return false
       }
@@ -399,14 +421,14 @@ export const useAuthStore = defineStore('auth', () => {
       // Verify admin status
       const isAdminUser = await checkAdminStatus()
       if (!isAdminUser) {
-        console.log('Session validation failed: not admin')
+
         await signOut()
         return false
       }
 
       return true
     } catch (error) {
-      console.error('Session validation error:', error)
+
       await handleSessionExpiration()
       return false
     }
@@ -419,6 +441,8 @@ export const useAuthStore = defineStore('auth', () => {
       authStateSubscription = null
     }
     initialized.value = false
+    loading.value = false
+    initializationPromise = null
   }
 
   return {

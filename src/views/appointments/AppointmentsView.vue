@@ -769,14 +769,14 @@ const totalPages = computed(() => Math.ceil(totalAppointments.value / itemsPerPa
 
 const goToPage = (newPage: number) => {
   if (newPage >= 1 && newPage <= totalPages.value && !loading.value) {
-    console.log('Going to page:', newPage)
+
     page.value = newPage
     loadAppointments()
   }
 }
 
 const handleItemsPerPageChange = (newItemsPerPage: number) => {
-  console.log('Items per page changed:', newItemsPerPage)
+
   itemsPerPage.value = newItemsPerPage
   page.value = 1 // Reset to first page
   loadAppointments()
@@ -820,7 +820,7 @@ const handleRowClick = (event: Event, item: Appointment) => {
     return
   }
   // You can add row click functionality here if needed
-  console.log('Row clicked:', item.id)
+
 }
 
 // Watch for searchQuery changes
@@ -862,14 +862,14 @@ watch(() => appointmentForm.status, () => {
 
 // Filter handlers
 const handleStatusFilterChange = (newStatus: string | null) => {
-  console.log('Status filter changed:', newStatus)
+
   selectedStatus.value = newStatus || ''
   page.value = 1 // Reset to first page when changing status filter
   loadAppointments()
 }
 
 const handleDateFilterChange = (newDate: string | null) => {
-  console.log('Date filter changed:', newDate)
+
   selectedDate.value = newDate || ''
   page.value = 1 // Reset to first page when changing date filter
   loadAppointments()
@@ -926,14 +926,6 @@ const loadAppointments = async () => {
   loading.value = true
   error.value = null
 
-  console.log('Loading appointments with params:', {
-    page: page.value,
-    itemsPerPage: itemsPerPage.value,
-    searchQuery: searchQuery.value,
-    selectedStatus: selectedStatus.value,
-    selectedDate: selectedDate.value
-  })
-
   try {
     const statusFilter = selectedStatus.value || ''
     const dateFilter = selectedDate.value || ''
@@ -955,73 +947,7 @@ const loadAppointments = async () => {
     appointments.value = result.data || []
     totalAppointments.value = result.count || 0
 
-    console.log('Appointments loaded:', {
-      dataLength: result.data?.length || 0,
-      totalCount: result.count || 0,
-      currentPage: page.value,
-      sampleData: result.data?.[0] // Log first appointment for debugging
-    })
-
-    // Debug: Log the structure of the first appointment
-    if (result.data && result.data.length > 0) {
-      console.log('First appointment structure:', {
-        appointment: result.data[0],
-        pet: result.data[0].pet,
-        user: result.data[0].user,
-        petName: result.data[0].pet?.name,
-        ownerName: getOwnerName(result.data[0].user)
-      })
-    } else {
-      // If no appointments found, add some sample data for testing
-      console.log('No appointments found, adding sample data for testing')
-      const sampleAppointments = [
-        {
-          id: 'sample-1',
-          appointment_date: '2024-01-15',
-          appointment_time: '10:00:00',
-          status: 'Completed',  // Using correct capitalized status
-          pet: { name: 'Buddy', type: 'Dog' },
-          user: { first_name: 'John', last_name: 'Doe', username: 'johndoe' },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          user_id: 'sample-user-1',
-          pet_id: 'sample-pet-1',
-          day_slot_id: null
-        },
-        {
-          id: 'sample-2',
-          appointment_date: '2024-01-16',
-          appointment_time: '14:30:00',
-          status: 'Pending',  // Using correct capitalized status
-          pet: { name: 'Whiskers', type: 'Cat' },
-          user: { first_name: 'Jane', last_name: 'Smith', username: 'janesmith' },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          user_id: 'sample-user-2',
-          pet_id: 'sample-pet-2',
-          day_slot_id: null
-        },
-        {
-          id: 'sample-3',
-          appointment_date: '2024-01-17',
-          appointment_time: '09:15:00',
-          status: 'Cancelled',  // Using correct capitalized status
-          pet: { name: 'Max', type: 'Dog' },
-          user: { first_name: 'Bob', last_name: 'Johnson', username: 'bobjohnson' },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          user_id: 'sample-user-3',
-          pet_id: 'sample-pet-3',
-          day_slot_id: null
-        }
-      ]
-
-      appointments.value = sampleAppointments
-      totalAppointments.value = sampleAppointments.length
-      console.log('Sample appointments added:', sampleAppointments)
-    }
   } catch (err) {
-    console.error('Failed to load appointments:', err)
     error.value = err instanceof Error ? err.message : 'Failed to load appointments'
     appointments.value = []
     totalAppointments.value = 0
@@ -1041,9 +967,7 @@ const canMarkAsCancelled = (status: string | null): boolean => {
 
 // Appointment management actions
 const markAsCompleted = async (appointment: Appointment) => {
-  console.log('Mark as completed clicked:', appointment)
   const petName = appointment.pet?.name || 'Unknown Pet'
-  const ownerName = getOwnerName(appointment.user)
 
   // Set loading state
   const appointmentIndex = appointments.value.findIndex((apt: Appointment) => apt.id === appointment.id)
@@ -1067,12 +991,10 @@ const markAsCompleted = async (appointment: Appointment) => {
 
     // Show success toast
     toast.success(`Appointment completed for ${petName}`)
-    console.log(`Appointment ${appointment.id} marked as completed`)
 
     // Refresh the appointments list
     await loadAppointments()
   } catch (error) {
-    console.error('Failed to mark appointment as completed:', error)
     toast.error('Failed to update appointment status')
 
     // Reset loading state
@@ -1083,9 +1005,7 @@ const markAsCompleted = async (appointment: Appointment) => {
 }
 
 const markAsCancelled = async (appointment: Appointment) => {
-  console.log('Mark as cancelled clicked:', appointment)
   const petName = appointment.pet?.name || 'Unknown Pet'
-  const ownerName = getOwnerName(appointment.user)
 
   // Set loading state
   const appointmentIndex = appointments.value.findIndex((apt: Appointment) => apt.id === appointment.id)
@@ -1109,12 +1029,10 @@ const markAsCancelled = async (appointment: Appointment) => {
 
     // Show warning toast
     toast.warning(`Appointment cancelled for ${petName}`)
-    console.log(`Appointment ${appointment.id} marked as cancelled`)
 
     // Refresh the appointments list
     await loadAppointments()
   } catch (error) {
-    console.error('Failed to mark appointment as cancelled:', error)
     toast.error('Failed to update appointment status')
 
     // Reset loading state
@@ -1182,7 +1100,6 @@ const loadAvailablePets = async () => {
       display_name: `${pet.name} (${pet.type || 'Unknown'}) - Owner: ${pet.owner?.first_name || ''} ${pet.owner?.last_name || ''}`.trim()
     }))
   } catch (error) {
-    console.error('Failed to load pets:', error)
     toast.error('Failed to load pets')
     availablePets.value = []
   } finally {
@@ -1217,7 +1134,6 @@ const loadTimeSlots = async () => {
       appointmentForm.day_slot_id = ''
     }
   } catch (error) {
-    console.error('Failed to load time slots:', error)
     toast.error('Failed to load available time slots')
     availableTimeSlots.value = []
   } finally {
@@ -1287,8 +1203,6 @@ const createAppointment = async () => {
       status: appointmentForm.status
     }
 
-    console.log('Creating appointment with time slot:', appointmentData)
-
     // Call API to create appointment
     const result = await ApiService.createAppointment(appointmentData)
 
@@ -1301,14 +1215,11 @@ const createAppointment = async () => {
     const timeSlotText = selectedTimeSlot.display_text
     toast.success(`Appointment created successfully for ${petName} at ${timeSlotText}`)
 
-    console.log('Appointment created successfully:', result.data)
-
     // Close dialog and refresh list
     closeNewAppointmentDialog()
     await loadAppointments()
 
   } catch (error) {
-    console.error('Failed to create appointment:', error)
     toast.error('Failed to create appointment')
   } finally {
     creatingAppointment.value = false
@@ -1324,7 +1235,7 @@ onMounted(() => {
 /* Enhanced Appointments View Styling */
 .appointments-view {
   padding: 32px;
-  background: rgba(248, 250, 252, 0.5);
+  background: rgb(var(--v-theme-background));
   min-height: 100vh;
 }
 
@@ -1351,14 +1262,14 @@ onMounted(() => {
 .page-title {
   font-size: 2.5rem;
   font-weight: 800;
-  color: rgba(0, 0, 0, 0.9);
+  color: rgb(var(--v-theme-on-surface));
   margin: 0 0 8px 0;
   line-height: 1.2;
 }
 
 .page-subtitle {
   font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.6);
+  color: rgb(var(--v-theme-on-surface-variant));
   margin: 0;
   line-height: 1.4;
 }
@@ -1387,7 +1298,7 @@ onMounted(() => {
 
 .stats-card {
   transition: all 0.3s ease;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(var(--v-theme-outline), 0.2);
 }
 
 .stats-card:hover {
@@ -1407,12 +1318,12 @@ onMounted(() => {
 
 /* Enhanced Filters */
 .filters-card {
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(var(--v-theme-outline), 0.2);
   transition: all 0.3s ease;
 }
 
 .filters-header {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(var(--v-theme-outline), 0.2);
   padding-bottom: 16px;
 }
 
@@ -1445,9 +1356,9 @@ onMounted(() => {
 
 .modern-custom-table :deep(thead th) {
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.87);
-  background: rgba(76, 175, 80, 0.02);
-  border-bottom: 2px solid rgba(76, 175, 80, 0.1);
+  color: rgb(var(--v-theme-on-surface));
+  background: rgba(var(--v-theme-primary), 0.02);
+  border-bottom: 2px solid rgba(var(--v-theme-primary), 0.1);
   white-space: nowrap;
   padding: 16px 12px;
 }
@@ -1607,18 +1518,48 @@ onMounted(() => {
 }
 
 /* Dark theme adjustments */
+.v-theme--dark .appointments-view {
+  background: rgb(var(--v-theme-background));
+}
+
+.v-theme--dark .page-header {
+  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.1), rgba(var(--v-theme-primary), 0.05));
+  border-color: rgba(var(--v-theme-primary), 0.2);
+}
+
+.v-theme--dark .stats-card {
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-color: rgba(var(--v-theme-outline), 0.2);
+}
+
+.v-theme--dark .stats-card:hover {
+  background: rgba(var(--v-theme-surface-variant), 0.4);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
+}
+
+.v-theme--dark .filters-card {
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-color: rgba(var(--v-theme-outline), 0.2);
+}
+
 .v-theme--dark .modern-custom-table :deep(thead th) {
-  background: rgba(76, 175, 80, 0.05);
-  color: rgba(255, 255, 255, 0.87);
+  background: rgba(var(--v-theme-primary), 0.1);
+  color: rgb(var(--v-theme-on-surface));
+  border-bottom-color: rgba(var(--v-theme-primary), 0.2);
+}
+
+.v-theme--dark .modern-custom-table :deep(tbody td) {
+  border-bottom-color: rgba(var(--v-theme-outline), 0.1);
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .v-theme--dark .modern-custom-table :deep(tbody tr:hover) {
-  background: rgba(76, 175, 80, 0.05);
+  background: rgba(var(--v-theme-primary), 0.05);
 }
 
 .v-theme--dark .custom-pagination-footer {
-  background: rgba(255, 255, 255, 0.02);
-  border-top-color: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--v-theme-surface-variant), 0.5);
+  border-top-color: rgba(var(--v-theme-outline), 0.2);
 }
 
 /* Enhanced Appointment Form Dialog Styling */

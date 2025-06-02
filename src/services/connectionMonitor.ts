@@ -31,7 +31,6 @@ export class ConnectionMonitor {
   startMonitoring() {
     if (this.isMonitoring) return
 
-    console.log('🔍 Starting connection monitoring...')
     this.isMonitoring = true
     this.setupEventListeners()
     this.startHealthChecks()
@@ -39,7 +38,6 @@ export class ConnectionMonitor {
 
   // Stop monitoring
   stopMonitoring() {
-    console.log('🛑 Stopping connection monitoring...')
     this.isMonitoring = false
     this.cleanup()
   }
@@ -49,22 +47,22 @@ export class ConnectionMonitor {
     // Handle visibility change (tab switching)
     this.visibilityChangeHandler = () => {
       if (document.visibilityState === 'visible') {
-        console.log('👁️ Tab became visible, checking connection...')
+
         this.handleTabVisible()
       } else {
-        console.log('🙈 Tab became hidden')
+
         this.handleTabHidden()
       }
     }
 
     // Handle window focus/blur
     this.focusHandler = () => {
-      console.log('🎯 Window focused, refreshing connection...')
+
       this.handleWindowFocus()
     }
 
     this.blurHandler = () => {
-      console.log('😴 Window blurred')
+
       this.lastActivity = Date.now()
     }
 
@@ -100,8 +98,6 @@ export class ConnectionMonitor {
   // Perform connection health check
   private async performHealthCheck() {
     try {
-      console.log('🏥 Performing health check...')
-      
       // Test basic Supabase connection
       const { data, error } = await supabaseAdmin
         .from('admin_users')
@@ -121,10 +117,7 @@ export class ConnectionMonitor {
       this.isConnected.value = true
       this.lastHealthCheck.value = new Date()
       this.reconnectAttempts = 0
-      
-      console.log('✅ Health check passed')
     } catch (error) {
-      console.error('❌ Health check failed:', error)
       this.isConnected.value = false
       await this.handleConnectionFailure()
     }
@@ -132,11 +125,17 @@ export class ConnectionMonitor {
 
   // Handle tab becoming visible
   private async handleTabVisible() {
+    const authStore = useAuthStore()
+
+    // Don't interfere if auth is currently loading (login in progress)
+    if (authStore.loading) {
+      return
+    }
+
     const timeSinceLastActivity = Date.now() - this.lastActivity
-    
+
     // If tab was hidden for more than 5 minutes, force reconnection
     if (timeSinceLastActivity > 5 * 60 * 1000) {
-      console.log('⏰ Tab was hidden for extended period, forcing reconnection...')
       await this.forceReconnection()
     } else {
       // Quick health check
@@ -153,38 +152,49 @@ export class ConnectionMonitor {
   private async handleWindowFocus() {
     // Force a health check and potential reconnection
     await this.performHealthCheck()
-    
-    // Refresh auth session
+
+    // Refresh auth session - but avoid interfering with ongoing auth operations
     try {
       const authStore = useAuthStore()
-      if (authStore.isAuthenticated) {
+
+      // Don't interfere if auth is currently loading (login in progress)
+      if (authStore.loading) {
+
+        return
+      }
+
+      // Only refresh session if user is already authenticated
+      if (authStore.isAuthenticated && authStore.initialized) {
         const { data: { session }, error } = await supabase.auth.getSession()
         if (error || !session) {
-          console.log('🔄 Session invalid, reinitializing auth...')
-          await authStore.initialize()
+
+          // Use handleSessionExpiration instead of initialize to avoid conflicts
+          await authStore.handleSessionExpiration()
+        } else {
+          // Session is valid, just refresh the token if needed
+
+          await authStore.refreshSession()
         }
       }
     } catch (error) {
-      console.error('Error refreshing session on focus:', error)
+
     }
   }
 
   // Handle connection failure
   private async handleConnectionFailure() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('🚨 Max reconnection attempts reached')
+
       return
     }
 
     this.isReconnecting.value = true
     this.reconnectAttempts++
 
-    console.log(`🔄 Attempting reconnection (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`)
-
     try {
       await this.forceReconnection()
     } catch (error) {
-      console.error('Reconnection failed:', error)
+
     } finally {
       this.isReconnecting.value = false
     }
@@ -192,8 +202,6 @@ export class ConnectionMonitor {
 
   // Force reconnection
   private async forceReconnection() {
-    console.log('🔄 Forcing reconnection...')
-    
     try {
       // Refresh auth session
       const authStore = useAuthStore()
@@ -203,13 +211,11 @@ export class ConnectionMonitor {
 
       // Test connection
       await this.performHealthCheck()
-      
+
       // Trigger reactivity update
       await nextTick()
-      
-      console.log('✅ Reconnection successful')
     } catch (error) {
-      console.error('❌ Reconnection failed:', error)
+
       throw error
     }
   }
@@ -239,7 +245,6 @@ export class ConnectionMonitor {
 
   // Manual reconnection trigger
   async reconnect() {
-    console.log('🔄 Manual reconnection triggered...')
     this.reconnectAttempts = 0
     await this.forceReconnection()
   }

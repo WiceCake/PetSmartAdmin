@@ -247,6 +247,55 @@ export interface Database {
           notes?: string | null
         }
       }
+      order_items: {
+        Row: {
+          id: string
+          order_id: string | null
+          product_id: string | null
+          quantity: number
+          price: number
+        }
+        Insert: {
+          id?: string
+          order_id?: string | null
+          product_id?: string | null
+          quantity: number
+          price: number
+        }
+        Update: {
+          id?: string
+          order_id?: string | null
+          product_id?: string | null
+          quantity?: number
+          price?: number
+        }
+      }
+      order_status_history: {
+        Row: {
+          id: string
+          order_id: string | null
+          status: string
+          changed_by: string | null
+          notes: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          order_id?: string | null
+          status: string
+          changed_by?: string | null
+          notes?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          order_id?: string | null
+          status?: string
+          changed_by?: string | null
+          notes?: string | null
+          created_at?: string | null
+        }
+      }
       messages: {
         Row: {
           id: string

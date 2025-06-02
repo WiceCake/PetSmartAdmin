@@ -29,7 +29,6 @@ async function withRetry<T>(
       return await operation()
     } catch (error: any) {
       lastError = error
-      console.warn(`${context} attempt ${attempt}/${maxAttempts} failed:`, error.message)
 
       // Don't retry on certain errors
       if (error.code === 'PGRST301' || error.code === 'PGRST116' || attempt === maxAttempts) {
@@ -42,7 +41,6 @@ async function withRetry<T>(
         RETRY_CONFIG.maxDelay
       )
 
-      console.log(`Retrying ${context} in ${delay}ms...`)
       await new Promise(resolve => setTimeout(resolve, delay))
     }
   }
@@ -62,6 +60,8 @@ type Appointment = Tables['appointments']['Row']
 type DaySlot = Tables['day_slots']['Row']
 type Product = Tables['products']['Row']
 type Order = Tables['orders']['Row']
+type OrderItem = Tables['order_items']['Row']
+type OrderStatusHistory = Tables['order_status_history']['Row']
 type Message = Tables['messages']['Row']
 type Notification = Tables['notifications']['Row']
 
@@ -73,7 +73,6 @@ export class ApiService {
       if (error) throw error
       return { data, error: null }
     }, 'Dashboard metrics fetch').catch(error => {
-      console.error('Error fetching dashboard metrics:', error)
       return { data: null, error }
     })
   }
@@ -171,7 +170,7 @@ export class ApiService {
 
       return { data: filteredProfilesData, error: null, count: totalFilteredCount }
     } catch (error) {
-      console.error('Error fetching users:', error)
+
       return { data: null, error, count: 0 }
     }
   }
@@ -206,7 +205,7 @@ export class ApiService {
 
       return { data, error: null }
     } catch (error) {
-      console.error('Error fetching user:', error)
+
       return { data: null, error }
     }
   }
@@ -223,7 +222,7 @@ export class ApiService {
       if (error) throw error
       return { data, error: null }
     } catch (error) {
-      console.error('Error updating user:', error)
+
       return { data: null, error }
     }
   }
@@ -276,7 +275,7 @@ export class ApiService {
         error: null
       }
     } catch (error) {
-      console.error('Error creating user:', error)
+
       return { data: null, error }
     }
   }
@@ -305,12 +304,12 @@ export class ApiService {
       })
 
       if (authError) {
-        console.warn('Failed to disable auth user, but profile was marked inactive:', authError)
+        // Auth user disable failed but profile was marked inactive
       }
 
       return { error: null }
     } catch (error) {
-      console.error('Error deleting user:', error)
+
       return { error }
     }
   }
@@ -324,7 +323,7 @@ export class ApiService {
       if (error) throw error
       return { data, error: null }
     } catch (error) {
-      console.error('Error resetting user password:', error)
+
       return { data: null, error }
     }
   }
@@ -371,7 +370,7 @@ export class ApiService {
       if (error) throw error
       return { data, error: null, count }
     } catch (error) {
-      console.error('Error fetching pets:', error)
+
       return { data: null, error, count: 0 }
     }
   }
@@ -392,7 +391,7 @@ export class ApiService {
       if (error) throw error
       return { data, error: null }
     } catch (error) {
-      console.error('Error fetching pet:', error)
+
       return { data: null, error }
     }
   }
@@ -428,7 +427,7 @@ export class ApiService {
 
       return { data, error: null }
     } catch (error) {
-      console.error('Error creating pet:', error)
+
       return { data: null, error }
     }
   }
@@ -452,7 +451,7 @@ export class ApiService {
       if (error) throw error
       return { data, error: null }
     } catch (error) {
-      console.error('Error updating pet:', error)
+
       return { data: null, error }
     }
   }
@@ -473,7 +472,7 @@ export class ApiService {
 
       return { error: null }
     } catch (error) {
-      console.error('Error deleting pet:', error)
+
       return { error }
     }
   }
@@ -481,7 +480,7 @@ export class ApiService {
   // Appointment Management
   static async getAppointments(page = 1, limit = 10, status = '', date = '', search = '') {
     try {
-      console.log('API: Fetching appointments with params:', { page, limit, status, date, search })
+
 
       let query = supabaseAdmin
         .from('appointments')
@@ -509,10 +508,10 @@ export class ApiService {
       const { data, error, count } = await query
         .range((page - 1) * limit, page * limit - 1)
 
-      console.log('API: Raw appointment data:', { data, error, count })
+
 
       if (error) {
-        console.error('API: Supabase error:', error)
+
         throw error
       }
 
@@ -523,11 +522,11 @@ export class ApiService {
         user: appointment.profiles
       })) || []
 
-      console.log('API: Transformed appointment data:', transformedData)
+
 
       return { data: transformedData, error: null, count }
     } catch (error) {
-      console.error('Error fetching appointments:', error)
+
       return { data: null, error, count: 0 }
     }
   }
@@ -541,7 +540,7 @@ export class ApiService {
     status: string
   }) {
     try {
-      console.log('API: Creating appointment with data:', appointmentData)
+
 
       const { data, error } = await supabaseAdmin
         .from('appointments')
@@ -557,19 +556,19 @@ export class ApiService {
         .select()
         .single()
 
-      console.log('API: Create appointment result:', { data, error })
+
 
       if (error) throw error
       return { data, error: null }
     } catch (error) {
-      console.error('Error creating appointment:', error)
+
       return { data: null, error }
     }
   }
 
   static async updateAppointmentStatus(id: string, status: string) {
     try {
-      console.log('API: Updating appointment status:', { id, status })
+
 
       const { data, error } = await supabaseAdmin
         .from('appointments')
@@ -578,12 +577,12 @@ export class ApiService {
         .select()
         .single()
 
-      console.log('API: Update appointment result:', { data, error })
+
 
       if (error) throw error
       return { data, error: null }
     } catch (error) {
-      console.error('Error updating appointment:', error)
+
       return { data: null, error }
     }
   }
@@ -606,7 +605,7 @@ export class ApiService {
       if (error) throw error
       return { data, error: null }
     } catch (error) {
-      console.error('Error fetching day slots:', error)
+
       return { data: null, error }
     }
   }
@@ -648,7 +647,7 @@ export class ApiService {
 
       return { data: availableSlots, error: null }
     } catch (error) {
-      console.error('Error fetching available time slots:', error)
+
       return { data: null, error }
     }
   }
@@ -680,7 +679,7 @@ export class ApiService {
       if (error) throw error
       return { data, error: null, count: totalCount }
     } catch (error) {
-      console.error('Error fetching products:', error)
+
       return { data: null, error, count: 0 }
     }
   }
@@ -696,7 +695,7 @@ export class ApiService {
       if (error) throw error
       return { data, error: null }
     } catch (error) {
-      console.error('Error creating product:', error)
+
       return { data: null, error }
     }
   }
@@ -721,7 +720,7 @@ export class ApiService {
 
       return { data: { ...data, publicUrl: urlData.publicUrl }, error: null }
     } catch (error) {
-      console.error('Error uploading product image:', error)
+
       return { data: null, error }
     }
   }
@@ -741,7 +740,7 @@ export class ApiService {
       if (error) throw error
       return { data, error: null }
     } catch (error) {
-      console.error('Error saving product image record:', error)
+
       return { data: null, error }
     }
   }
@@ -764,7 +763,7 @@ export class ApiService {
       if (dbError) throw dbError
       return { error: null }
     } catch (error) {
-      console.error('Error deleting product image:', error)
+
       return { error }
     }
   }
@@ -810,7 +809,7 @@ export class ApiService {
 
       return { data: productResult.data, error: null }
     } catch (error) {
-      console.error('Error creating product with images:', error)
+
       return { data: null, error }
     }
   }
@@ -862,7 +861,7 @@ export class ApiService {
 
       return { data: productResult.data, error: null }
     } catch (error) {
-      console.error('Error updating product with images:', error)
+
       return { data: null, error }
     }
   }
@@ -879,7 +878,7 @@ export class ApiService {
       if (error) throw error
       return { data, error: null }
     } catch (error) {
-      console.error('Error updating product:', error)
+
       return { data: null, error }
     }
   }
@@ -894,22 +893,46 @@ export class ApiService {
       if (error) throw error
       return { error: null }
     } catch (error) {
-      console.error('Error deleting product:', error)
+
       return { error }
     }
   }
 
   // Order Management
-  static async getOrders(page = 1, limit = 10, status = '') {
+  static async getOrders(page = 1, limit = 10, status = '', search = '', dateFrom = '', dateTo = '') {
     try {
+      // First get the total count for pagination
+      let countQuery = supabaseAdmin
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+
+      if (status) {
+        countQuery = countQuery.eq('status', status)
+      }
+
+      if (search) {
+        countQuery = countQuery.or(`notes.ilike.%${search}%`)
+      }
+
+      if (dateFrom) {
+        countQuery = countQuery.gte('created_at', dateFrom)
+      }
+
+      if (dateTo) {
+        countQuery = countQuery.lte('created_at', dateTo)
+      }
+
+      const { count } = await countQuery
+
+      // Then get the actual data with relationships
       let query = supabaseAdmin
         .from('orders')
         .select(`
           *,
-          user:profiles(username, first_name, last_name),
+          user:profiles!orders_user_id_fkey(id, username, first_name, last_name),
           items:order_items(
             *,
-            product:products(title, price)
+            product:products(id, title, price, images:product_images(*))
           )
         `)
         .order('created_at', { ascending: false })
@@ -918,14 +941,71 @@ export class ApiService {
         query = query.eq('status', status)
       }
 
-      const { data, error, count } = await query
+      if (search) {
+        query = query.or(`notes.ilike.%${search}%`)
+      }
+
+      if (dateFrom) {
+        query = query.gte('created_at', dateFrom)
+      }
+
+      if (dateTo) {
+        query = query.lte('created_at', dateTo)
+      }
+
+      const { data, error } = await query
         .range((page - 1) * limit, page * limit - 1)
 
       if (error) throw error
       return { data, error: null, count }
     } catch (error) {
-      console.error('Error fetching orders:', error)
+
       return { data: null, error, count: 0 }
+    }
+  }
+
+  static async getOrderById(id: string) {
+    try {
+
+
+      // First get the order with user info
+      const { data: orderData, error: orderError } = await supabaseAdmin
+        .from('orders')
+        .select(`
+          *,
+          user:profiles(id, username, first_name, last_name, phone_number)
+        `)
+        .eq('id', id)
+        .single()
+
+      if (orderError) {
+
+        throw orderError
+      }
+
+      // Then get the order items with product info
+      const { data: itemsData, error: itemsError } = await supabaseAdmin
+        .from('order_items')
+        .select(`
+          *,
+          product:products(id, title, description, price)
+        `)
+        .eq('order_id', id)
+
+      if (itemsError) {
+        // Don't throw error for items, just continue without them
+      }
+
+      // Combine the data
+      const combinedData = {
+        ...orderData,
+        items: itemsData || []
+      }
+
+      return { data: combinedData, error: null }
+    } catch (error) {
+
+      return { data: null, error }
     }
   }
 
@@ -933,7 +1013,11 @@ export class ApiService {
     try {
       const { data, error } = await supabaseAdmin
         .from('orders')
-        .update({ status })
+        .update({
+          status,
+          ...(status === 'Completed' && { delivered_at: new Date().toISOString() }),
+          ...(status === 'Order Confirmation' && { confirmed_at: new Date().toISOString() })
+        })
         .eq('id', id)
         .select()
         .single()
@@ -952,7 +1036,610 @@ export class ApiService {
 
       return { data, error: null }
     } catch (error) {
-      console.error('Error updating order status:', error)
+
+      return { data: null, error }
+    }
+  }
+
+  static async getOrderStats() {
+    try {
+
+
+      // Get total orders
+      const { count: totalOrders } = await supabaseAdmin
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+
+      // Get preparing orders (equivalent to pending)
+      const { count: pendingOrders } = await supabaseAdmin
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'Preparing')
+
+      // Get completed orders count
+      const { count: completedOrders } = await supabaseAdmin
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'Completed')
+
+      // Get total revenue from completed orders
+      const { data: revenueData } = await supabaseAdmin
+        .from('orders')
+        .select('total_amount')
+        .eq('status', 'Completed')
+
+      const totalRevenue = revenueData?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0
+
+      // Get today's orders
+      const today = new Date().toISOString().split('T')[0]
+      const { count: todayOrders } = await supabaseAdmin
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', today)
+
+      const stats = {
+        totalOrders: totalOrders || 0,
+        pendingOrders: pendingOrders || 0,
+        completedOrders: completedOrders || 0,
+        totalRevenue,
+        todayOrders: todayOrders || 0
+      }
+
+
+
+      return {
+        data: stats,
+        error: null
+      }
+    } catch (error) {
+
+      return { data: null, error }
+    }
+  }
+
+  // Admin Profile Management Methods
+  static async getCurrentAdminProfile(adminEmail: string) {
+    try {
+
+
+      const { data, error } = await supabaseAdmin
+        .from('admin_users')
+        .select('*')
+        .eq('email', adminEmail)
+        .eq('is_active', true)
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        throw error
+      }
+
+
+      return { data, error: null }
+    } catch (error) {
+
+      return { data: null, error }
+    }
+  }
+
+  static async updateAdminProfile(adminEmail: string, profileData: any) {
+    try {
+
+
+      const updateData = {
+        first_name: profileData.firstName,
+        last_name: profileData.lastName,
+        username: profileData.username,
+        phone_number: profileData.phone,
+        bio: profileData.bio,
+        updated_at: new Date().toISOString()
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('admin_users')
+        .update(updateData)
+        .eq('email', adminEmail)
+        .eq('is_active', true)
+        .select()
+        .single()
+
+      if (error) throw error
+
+
+      return { data, error: null }
+    } catch (error) {
+
+      return { data: null, error }
+    }
+  }
+
+  static async updateAdminPassword(adminEmail: string, newPassword: string) {
+    try {
+
+
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      })
+
+      if (error) throw error
+
+      // Update last password change timestamp in admin_users table
+      await supabaseAdmin
+        .from('admin_users')
+        .update({
+          last_password_change: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('email', adminEmail)
+        .eq('is_active', true)
+
+
+      return { data: true, error: null }
+    } catch (error) {
+
+      return { data: null, error }
+    }
+  }
+
+  static async uploadAdminProfilePicture(adminEmail: string, file: File) {
+    try {
+
+
+      const fileExt = file.name.split('.').pop()
+      const fileName = `admin-${adminEmail.replace('@', '-').replace('.', '-')}/profile.${fileExt}`
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('profile-pictures')
+        .upload(fileName, file, {
+          upsert: true
+        })
+
+      if (uploadError) throw uploadError
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-pictures')
+        .getPublicUrl(fileName)
+
+      // Update admin profile with new picture URL
+      const { data, error } = await supabaseAdmin
+        .from('admin_users')
+        .update({
+          profile_pic: publicUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('email', adminEmail)
+        .eq('is_active', true)
+        .select()
+        .single()
+
+      if (error) throw error
+
+
+      return { data: { url: publicUrl, profile: data }, error: null }
+    } catch (error) {
+
+      return { data: null, error }
+    }
+  }
+
+  // Admin Management Methods
+  static async getAdminUsers(page = 1, limit = 10, search = '') {
+    try {
+      let query = supabaseAdmin
+        .from('admin_users')
+        .select('*', { count: 'exact' })
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+
+      // Add search filter if provided
+      if (search) {
+        query = query.or(`email.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%,username.ilike.%${search}%`)
+      }
+
+      // Add pagination
+      const from = (page - 1) * limit
+      const to = from + limit - 1
+      query = query.range(from, to)
+
+      const { data, error, count } = await query
+
+      if (error) throw error
+
+
+      return { data, count, error: null }
+    } catch (error) {
+
+      return { data: null, count: 0, error }
+    }
+  }
+
+  static async getAdminStats() {
+    try {
+
+
+      // Get total active admins
+      const { count: totalAdmins } = await supabaseAdmin
+        .from('admin_users')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+
+      // Get super admins count
+      const { count: superAdmins } = await supabaseAdmin
+        .from('admin_users')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .eq('role', 'super_admin')
+
+      // Get regular admins count
+      const { count: regularAdmins } = await supabaseAdmin
+        .from('admin_users')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .eq('role', 'admin')
+
+      // Get recently created admins (last 30 days)
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+      const { count: recentAdmins } = await supabaseAdmin
+        .from('admin_users')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .gte('created_at', thirtyDaysAgo.toISOString())
+
+      const stats = {
+        totalAdmins: totalAdmins || 0,
+        superAdmins: superAdmins || 0,
+        regularAdmins: regularAdmins || 0,
+        recentAdmins: recentAdmins || 0
+      }
+
+      return { data: stats, error: null }
+    } catch (error) {
+
+      return { data: null, error }
+    }
+  }
+
+  static async createAdminUser(adminData: any, createdBy: string) {
+    try {
+
+
+      // First create the auth user
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: adminData.email,
+        password: adminData.password,
+        email_confirm: true
+      })
+
+      if (authError) throw authError
+
+      // Then create the admin user record
+      const { data, error } = await supabaseAdmin
+        .from('admin_users')
+        .insert({
+          id: authData.user.id,
+          email: adminData.email,
+          role: 'admin', // Always create as regular admin
+          first_name: adminData.firstName,
+          last_name: adminData.lastName,
+          username: adminData.username,
+          phone_number: adminData.phone,
+          bio: adminData.bio,
+          created_by: createdBy,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+
+      if (error) {
+        // If admin user creation fails, clean up the auth user
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
+        throw error
+      }
+
+
+      return { data, error: null }
+    } catch (error) {
+
+      return { data: null, error }
+    }
+  }
+
+  static async updateAdminUser(adminId: string, adminData: any) {
+    try {
+
+
+      const updateData = {
+        first_name: adminData.firstName,
+        last_name: adminData.lastName,
+        username: adminData.username,
+        phone_number: adminData.phone,
+        bio: adminData.bio,
+        updated_at: new Date().toISOString()
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('admin_users')
+        .update(updateData)
+        .eq('id', adminId)
+        .eq('is_active', true)
+        .select()
+        .single()
+
+      if (error) throw error
+
+
+      return { data, error: null }
+    } catch (error) {
+
+      return { data: null, error }
+    }
+  }
+
+  static async deactivateAdminUser(adminId: string) {
+    try {
+
+
+      const { data, error } = await supabaseAdmin
+        .from('admin_users')
+        .update({
+          is_active: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', adminId)
+        .select()
+        .single()
+
+      if (error) throw error
+
+
+      return { data, error: null }
+    } catch (error) {
+
+      return { data: null, error }
+    }
+  }
+
+  // ==========================================
+  // ADMIN NOTIFICATIONS API METHODS
+  // ==========================================
+
+  static async getAdminNotifications(adminUserId: string, page = 1, limit = 20, filters = {}) {
+    try {
+
+
+      let query = supabaseAdmin
+        .from('admin_notifications')
+        .select('*', { count: 'exact' })
+        .eq('admin_user_id', adminUserId)
+        .order('created_at', { ascending: false })
+
+      // Apply filters
+      if (filters.isRead !== undefined) {
+        query = query.eq('is_read', filters.isRead)
+      }
+      if (filters.type) {
+        query = query.eq('type', filters.type)
+      }
+      if (filters.category) {
+        query = query.eq('category', filters.category)
+      }
+      if (filters.priority) {
+        query = query.eq('priority', filters.priority)
+      }
+
+      // Apply pagination
+      const from = (page - 1) * limit
+      const to = from + limit - 1
+      query = query.range(from, to)
+
+      const { data, error, count } = await query
+
+      if (error) throw error
+
+
+      return { data: data || [], error: null, count: count || 0 }
+    } catch (error) {
+
+      return { data: [], error, count: 0 }
+    }
+  }
+
+  static async getUnreadNotificationCount(adminUserId: string) {
+    try {
+
+
+      const { count, error } = await supabaseAdmin
+        .from('admin_notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('admin_user_id', adminUserId)
+        .eq('is_read', false)
+
+      if (error) throw error
+
+
+      return { data: count || 0, error: null }
+    } catch (error) {
+
+      return { data: 0, error }
+    }
+  }
+
+  static async markNotificationAsRead(notificationId: string) {
+    try {
+
+
+      const { data, error } = await supabaseAdmin
+        .from('admin_notifications')
+        .update({
+          is_read: true,
+          read_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', notificationId)
+        .select()
+        .single()
+
+      if (error) throw error
+
+
+      return { data, error: null }
+    } catch (error) {
+
+      return { data: null, error }
+    }
+  }
+
+  static async markAllNotificationsAsRead(adminUserId: string) {
+    try {
+
+
+      const { data, error } = await supabaseAdmin
+        .from('admin_notifications')
+        .update({
+          is_read: true,
+          read_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('admin_user_id', adminUserId)
+        .eq('is_read', false)
+        .select()
+
+      if (error) throw error
+
+
+      return { data, error: null }
+    } catch (error) {
+
+      return { data: null, error }
+    }
+  }
+
+  static async deleteNotification(notificationId: string) {
+    try {
+
+
+      const { data, error } = await supabaseAdmin
+        .from('admin_notifications')
+        .delete()
+        .eq('id', notificationId)
+        .select()
+        .single()
+
+      if (error) throw error
+
+
+      return { data, error: null }
+    } catch (error) {
+
+      return { data: null, error }
+    }
+  }
+
+  static async createAdminNotification(notificationData: any) {
+    try {
+
+
+      const { data, error } = await supabaseAdmin
+        .from('admin_notifications')
+        .insert({
+          admin_user_id: notificationData.adminUserId,
+          title: notificationData.title,
+          message: notificationData.message,
+          type: notificationData.type || 'info',
+          priority: notificationData.priority || 'medium',
+          category: notificationData.category || 'general',
+          metadata: notificationData.metadata || {},
+          action_url: notificationData.actionUrl,
+          action_label: notificationData.actionLabel,
+          expires_at: notificationData.expiresAt,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      return { data, error: null }
+    } catch (error) {
+
+      return { data: null, error }
+    }
+  }
+
+  static async bulkDeleteNotifications(notificationIds: string[]) {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('admin_notifications')
+        .delete()
+        .in('id', notificationIds)
+        .select()
+
+      if (error) throw error
+
+      return { data, error: null }
+    } catch (error) {
+
+      return { data: null, error }
+    }
+  }
+
+  static async getNotificationPreferences(adminUserId: string) {
+    try {
+
+
+      const { data, error } = await supabaseAdmin
+        .from('admin_notification_preferences')
+        .select('*')
+        .eq('admin_user_id', adminUserId)
+
+      if (error) throw error
+
+
+      return { data: data || [], error: null }
+    } catch (error) {
+
+      return { data: [], error }
+    }
+  }
+
+  static async updateNotificationPreferences(adminUserId: string, preferences: any[]) {
+    try {
+
+
+      // Delete existing preferences
+      await supabaseAdmin
+        .from('admin_notification_preferences')
+        .delete()
+        .eq('admin_user_id', adminUserId)
+
+      // Insert new preferences
+      const preferencesData = preferences.map(pref => ({
+        admin_user_id: adminUserId,
+        category: pref.category,
+        in_app_enabled: pref.inAppEnabled,
+        email_enabled: pref.emailEnabled,
+        push_enabled: pref.pushEnabled,
+        priority_filter: pref.priorityFilter,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }))
+
+      const { data, error } = await supabaseAdmin
+        .from('admin_notification_preferences')
+        .insert(preferencesData)
+        .select()
+
+      if (error) throw error
+
+
+      return { data, error: null }
+    } catch (error) {
+
       return { data: null, error }
     }
   }
@@ -973,7 +1660,6 @@ export class ApiService {
       if (error) throw error
       return { data, error: null, count }
     } catch (error) {
-      console.error('Error fetching messages:', error)
       return { data: null, error, count: 0 }
     }
   }
@@ -996,7 +1682,6 @@ export class ApiService {
       if (error) throw error
       return { data, error: null }
     } catch (error) {
-      console.error('Error sending message:', error)
       return { data: null, error }
     }
   }
@@ -1013,7 +1698,7 @@ export class ApiService {
       if (error) throw error
       return { data, error: null }
     } catch (error) {
-      console.error('Error creating notification:', error)
+
       return { data: null, error }
     }
   }
@@ -1044,7 +1729,6 @@ export class ApiService {
       if (error) throw error
       return { data, error: null }
     } catch (error) {
-      console.error('Error broadcasting notification:', error)
       return { data: null, error }
     }
   }
@@ -1081,7 +1765,7 @@ export class ApiService {
         error: null
       }
     } catch (error) {
-      console.error('Error fetching analytics:', error)
+
       return { data: null, error }
     }
   }

@@ -33,7 +33,9 @@ const supabaseConfig = {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    flowType: 'pkce' as const
+    flowType: 'pkce' as const,
+    storageKey: 'petsmart-admin-auth', // Unique storage key to prevent conflicts
+    debug: false // Disable debug to reduce console noise
   },
   realtime: {
     params: {
@@ -42,76 +44,89 @@ const supabaseConfig = {
   },
   global: {
     headers: {
-      'X-Client-Info': 'petsmart-admin'
+      'X-Client-Info': 'petsmart-admin-singleton'
     }
   }
 }
 
-const supabaseAdminConfig = {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'petsmart-admin-service'
-    }
-  }
-}
-
-// Create clients with proper typing
+// Single instance pattern to prevent multiple GoTrueClient instances
 let supabaseInstance: SupabaseClient<Database> | null = null
 let supabaseAdminInstance: SupabaseClient<Database> | null = null
 
-// Lazy initialization to avoid circular dependencies
-export const getSupabaseClient = (): SupabaseClient<Database> => {
-  if (!supabaseInstance && supabaseUrl && supabaseAnonKey) {
-    supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey, supabaseConfig)
+// Initialize main Supabase client (singleton)
+const initializeSupabaseClient = (): SupabaseClient<Database> => {
+  if (supabaseInstance) {
+    return supabaseInstance
   }
 
-  if (!supabaseInstance) {
+  if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Failed to initialize Supabase client. Check environment variables.')
   }
 
+  supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey, supabaseConfig)
   return supabaseInstance
 }
 
-export const getSupabaseAdminClient = (): SupabaseClient<Database> => {
-  if (!supabaseAdminInstance && supabaseUrl) {
-    const key = supabaseServiceRoleKey || supabaseAnonKey
-    if (key) {
-      supabaseAdminInstance = createClient<Database>(supabaseUrl, key, supabaseAdminConfig)
-    }
+// Initialize admin Supabase client (singleton) - No Auth to prevent GoTrueClient conflicts
+const initializeSupabaseAdminClient = (): SupabaseClient<Database> => {
+  if (supabaseAdminInstance) {
+    return supabaseAdminInstance
   }
 
-  if (!supabaseAdminInstance) {
+  if (!supabaseUrl) {
     throw new Error('Failed to initialize Supabase admin client. Check environment variables.')
   }
 
+  const key = supabaseServiceRoleKey || supabaseAnonKey
+  if (!key) {
+    throw new Error('No service role key or anon key available for admin client.')
+  }
+
+  // Create admin client with minimal auth configuration to prevent GoTrueClient creation
+  const adminConfig = {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+      storageKey: `petsmart-admin-service-${Date.now()}`, // Unique storage key
+      storage: {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {}
+      }
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'petsmart-admin-service-no-auth'
+      }
+    }
+  }
+
+  supabaseAdminInstance = createClient<Database>(supabaseUrl, key, adminConfig)
   return supabaseAdminInstance
 }
 
-// Export instances for backward compatibility with lazy initialization
-let _supabase: SupabaseClient<Database> | null = null
-let _supabaseAdmin: SupabaseClient<Database> | null = null
+// Export getter functions (for backward compatibility)
+export const getSupabaseClient = (): SupabaseClient<Database> => {
+  return initializeSupabaseClient()
+}
 
-// Lazy-loaded supabase client getter
+export const getSupabaseAdminClient = (): SupabaseClient<Database> => {
+  return initializeSupabaseAdminClient()
+}
+
+// Export singleton instances directly
 export const supabase = new Proxy({} as SupabaseClient<Database>, {
   get(target, prop) {
-    if (!_supabase) {
-      _supabase = getSupabaseClient()
-    }
-    return (_supabase as any)[prop]
+    const client = initializeSupabaseClient()
+    return (client as any)[prop]
   }
 })
 
-// Lazy-loaded supabase admin client getter
 export const supabaseAdmin = new Proxy({} as SupabaseClient<Database>, {
   get(target, prop) {
-    if (!_supabaseAdmin) {
-      _supabaseAdmin = getSupabaseAdminClient()
-    }
-    return (_supabaseAdmin as any)[prop]
+    const client = initializeSupabaseAdminClient()
+    return (client as any)[prop]
   }
 })
 

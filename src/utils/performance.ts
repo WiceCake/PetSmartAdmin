@@ -28,11 +28,7 @@ export class PerformanceMonitor {
         for (const entry of list.getEntries()) {
           if (entry.entryType === 'navigation') {
             const navEntry = entry as PerformanceNavigationTiming
-            console.log('🚀 Navigation Performance:', {
-              domContentLoaded: navEntry.domContentLoadedEventEnd - navEntry.domContentLoadedEventStart,
-              loadComplete: navEntry.loadEventEnd - navEntry.loadEventStart,
-              totalTime: navEntry.loadEventEnd - navEntry.fetchStart
-            })
+            this.recordMetric('navigation', navEntry.loadEventEnd - navEntry.fetchStart)
           }
         }
       })
@@ -42,12 +38,8 @@ export class PerformanceMonitor {
       // Monitor long tasks
       const longTaskObserver = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          if (entry.duration > 50) { // Tasks longer than 50ms
-            console.warn('⚠️ Long Task Detected:', {
-              name: entry.name,
-              duration: entry.duration,
-              startTime: entry.startTime
-            })
+          if (entry.duration > 50) {
+            this.recordMetric('longTask', entry.duration)
           }
         }
       })
@@ -55,7 +47,7 @@ export class PerformanceMonitor {
       this.observers.push(longTaskObserver)
 
     } catch (error) {
-      console.warn('Performance observers not supported:', error)
+      // Performance observers not supported
     }
   }
 
@@ -67,11 +59,6 @@ export class PerformanceMonitor {
     const duration = end - start
 
     this.recordMetric(name, duration)
-    
-    if (duration > 100) {
-      console.warn(`⚠️ Slow function: ${name} took ${duration.toFixed(2)}ms`)
-    }
-
     return result
   }
 
@@ -83,11 +70,6 @@ export class PerformanceMonitor {
     const duration = end - start
 
     this.recordMetric(name, duration)
-    
-    if (duration > 200) {
-      console.warn(`⚠️ Slow async function: ${name} took ${duration.toFixed(2)}ms`)
-    }
-
     return result
   }
 
@@ -149,7 +131,6 @@ export class PerformanceMonitor {
   checkMemoryLeaks() {
     const memory = this.getMemoryUsage()
     if (memory && memory.used > memory.limit * 0.8) {
-      console.warn('⚠️ High memory usage detected:', memory)
       return true
     }
     return false
@@ -202,7 +183,6 @@ export function throttle<T extends (...args: any[]) => any>(
   }
 }
 
-// Lazy loading utility
 export function createLazyComponent(importFn: () => Promise<any>) {
   return () => ({
     component: importFn(),
@@ -211,6 +191,31 @@ export function createLazyComponent(importFn: () => Promise<any>) {
     delay: 200,
     timeout: 10000
   })
+}
+
+export function debounceWithImmediate<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number,
+  immediate = false
+): (...args: Parameters<T>) => void {
+  let timeout: number | null = null
+  let result: ReturnType<T>
+
+  return function executedFunction(...args: Parameters<T>) {
+    const later = () => {
+      timeout = null
+      if (!immediate) result = func(...args)
+    }
+
+    const callNow = immediate && !timeout
+
+    if (timeout) clearTimeout(timeout)
+    timeout = window.setTimeout(later, wait)
+
+    if (callNow) result = func(...args)
+
+    return result
+  }
 }
 
 // Export singleton instance

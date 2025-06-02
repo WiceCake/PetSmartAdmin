@@ -39,16 +39,19 @@ export function useScrollPosition(options: ScrollPositionOptions = {}) {
   }
 
   // Find scroll element by selector
-  const findScrollElement = (): HTMLElement | null => {
+  const findScrollElement = (silent = false): HTMLElement | null => {
     if (options.element) return options.element
-    
-    const element = document.querySelector(selector) as HTMLElement
-    if (!element) {
-      console.warn(`Scroll element not found with selector: ${selector}`)
+
+    try {
+      const element = document.querySelector(selector) as HTMLElement
+      if (!element && !silent) {
+        return null
+      }
+
+      return element
+    } catch (error) {
       return null
     }
-    
-    return element
   }
 
   // Restore scroll position
@@ -56,8 +59,8 @@ export function useScrollPosition(options: ScrollPositionOptions = {}) {
     if (!restoreOnMount || !sidebarStore.userPreferences.rememberScrollPosition) return
 
     await nextTick()
-    
-    const element = scrollElement.value || findScrollElement()
+
+    const element = scrollElement.value || findScrollElement(true) // Silent check
     if (!element) return
 
     const savedPosition = sidebarStore.scrollPosition
@@ -80,7 +83,7 @@ export function useScrollPosition(options: ScrollPositionOptions = {}) {
 
   // Save current scroll position
   const saveScrollPosition = () => {
-    const element = scrollElement.value || findScrollElement()
+    const element = scrollElement.value || findScrollElement(true) // Silent check
     if (element) {
       const position = element.scrollTop
       sidebarStore.setScrollPosition(position)
@@ -89,7 +92,7 @@ export function useScrollPosition(options: ScrollPositionOptions = {}) {
 
   // Scroll to specific position
   const scrollTo = (position: number, smooth = true) => {
-    const element = scrollElement.value || findScrollElement()
+    const element = scrollElement.value || findScrollElement(true) // Silent check
     if (element) {
       element.scrollTo({
         top: position,
@@ -103,18 +106,27 @@ export function useScrollPosition(options: ScrollPositionOptions = {}) {
     scrollTo(0, smooth)
   }
 
-  // Initialize scroll position management
+  // Initialize scroll position management with retry
   const initialize = async () => {
     await nextTick()
-    
-    // Find the scroll element
-    const element = findScrollElement()
+
+    // Try to find the scroll element with retries
+    let element = findScrollElement(true) // Silent first attempt
+    let retries = 0
+    const maxRetries = 3
+
+    while (!element && retries < maxRetries) {
+      await new Promise(resolve => setTimeout(resolve, 100)) // Wait 100ms
+      element = findScrollElement(true) // Silent retry
+      retries++
+    }
+
     if (element) {
       scrollElement.value = element
-      
+
       // Add scroll listener
       element.addEventListener('scroll', handleScroll, { passive: true })
-      
+
       // Restore scroll position
       await restoreScrollPosition()
     }

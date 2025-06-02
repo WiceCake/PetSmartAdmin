@@ -80,27 +80,7 @@
                       />
                     </div>
 
-                    <!-- Remember Me & Forgot Password -->
-                    <div class="d-flex justify-space-between align-center mb-6">
-                      <v-checkbox
-                        v-model="rememberMe"
-                        label="Remember me"
-                        density="compact"
-                        color="primary"
-                        hide-details
-                        class="remember-checkbox"
-                      />
 
-                      <v-btn
-                        variant="text"
-                        color="primary"
-                        size="small"
-                        class="forgot-btn"
-                        @click="showForgotPassword = true"
-                      >
-                        Forgot password?
-                      </v-btn>
-                    </div>
 
                     <!-- Login Button -->
                     <v-btn
@@ -110,7 +90,7 @@
                       block
                       :loading="authStore.loading"
                       :disabled="!isFormValid"
-                      class="login-btn mb-4"
+                      class="login-btn mb-4 mt-6"
                       rounded="lg"
                     >
                       <v-icon icon="mdi-login" class="me-2" />
@@ -137,64 +117,7 @@
       </div>
     </v-main>
 
-    <!-- Modern Forgot Password Dialog -->
-    <v-dialog v-model="showForgotPassword" max-width="500" persistent>
-      <v-card rounded="xl" class="forgot-dialog">
-        <v-card-title class="pa-6 pb-4">
-          <div class="d-flex align-center">
-            <v-icon icon="mdi-lock-reset" color="primary" class="me-3" size="28" />
-            <div>
-              <h3 class="text-h5 font-weight-bold">Reset Password</h3>
-              <p class="text-body-2 text-on-surface-variant mb-0">
-                Enter your email to receive reset instructions
-              </p>
-            </div>
-          </div>
-        </v-card-title>
 
-        <v-card-text class="pa-6 pt-0">
-          <v-form @submit.prevent="handleForgotPassword">
-            <div class="form-group">
-              <label class="form-label">Email Address</label>
-              <v-text-field
-                v-model="forgotEmail"
-                type="email"
-                prepend-inner-icon="mdi-email-outline"
-                variant="outlined"
-                density="comfortable"
-                :rules="emailRules"
-                placeholder="Enter your email address"
-                class="modern-input"
-                hide-details="auto"
-                required
-              />
-            </div>
-          </v-form>
-        </v-card-text>
-
-        <v-card-actions class="pa-6 pt-0">
-          <v-btn
-            variant="outlined"
-            color="secondary"
-            @click="showForgotPassword = false"
-            class="me-3"
-            rounded="lg"
-          >
-            Cancel
-          </v-btn>
-          <v-spacer />
-          <v-btn
-            color="primary"
-            :loading="authStore.loading"
-            @click="handleForgotPassword"
-            rounded="lg"
-          >
-            <v-icon icon="mdi-send" class="me-2" />
-            Send Reset Email
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </v-app>
 </template>
 
@@ -210,11 +133,8 @@ const authStore = useAuthStore()
 const form = ref()
 const email = ref('')
 const password = ref('')
-const rememberMe = ref(false)
 const showPassword = ref(false)
 const errorMessage = ref('')
-const showForgotPassword = ref(false)
-const forgotEmail = ref('')
 const emailError = ref('')
 const passwordError = ref('')
 
@@ -235,49 +155,33 @@ const isFormValid = computed(() => {
 })
 
 const handleLogin = async () => {
-  console.log('Login attempt started for:', email.value)
   errorMessage.value = ''
   emailError.value = ''
   passwordError.value = ''
 
   if (!form.value?.validate()) {
-    console.log('Form validation failed')
     return
   }
 
   try {
-    console.log('Calling authStore.signIn...')
     const result = await authStore.signIn(email.value, password.value)
-    console.log('SignIn result:', result)
 
     if (result?.success) {
-      console.log('Login successful, verifying auth state...')
-
       // Wait a moment to ensure auth state is fully updated
       await new Promise(resolve => setTimeout(resolve, 100))
 
       // Verify that authentication state is properly set
       if (!authStore.isAuthenticated || !authStore.isAdmin) {
-        console.error('Auth state verification failed:', {
-          isAuthenticated: authStore.isAuthenticated,
-          isAdmin: authStore.isAdmin,
-          user: authStore.user?.email,
-          adminUser: authStore.adminUser
-        })
         errorMessage.value = 'Authentication state error. Please try again.'
         return
       }
 
-      console.log('Auth state verified, getting redirect URL')
-
       // Get the intended destination or default to dashboard
       const redirectUrl = authStore.getAndClearRedirectUrl()
-      console.log('Redirecting to:', redirectUrl)
 
       // Use router.replace to avoid adding login to history
       await router.replace(redirectUrl)
     } else {
-      console.log('Login failed:', result?.error)
       errorMessage.value = result?.error || 'Login failed. Please try again.'
 
       // Handle specific error types
@@ -288,27 +192,11 @@ const handleLogin = async () => {
       }
     }
   } catch (error: any) {
-    console.error('Login error:', error)
     errorMessage.value = error.message || 'Login failed. Please try again.'
   }
 }
 
-const handleForgotPassword = async () => {
-  if (!forgotEmail.value) {
-    return
-  }
 
-  try {
-    const result = await authStore.resetPassword(forgotEmail.value)
-
-    if (result?.success) {
-      showForgotPassword.value = false
-      forgotEmail.value = ''
-    }
-  } catch (error: any) {
-    console.error('Password reset error:', error)
-  }
-}
 </script>
 
 <style scoped>
@@ -439,22 +327,7 @@ const handleForgotPassword = async () => {
   font-size: 0.875rem;
 }
 
-/* Remember Checkbox */
-.remember-checkbox :deep(.v-label) {
-  font-size: 0.875rem;
-  color: rgba(0, 0, 0, 0.7);
-}
 
-/* Forgot Button */
-.forgot-btn {
-  font-size: 0.875rem;
-  text-decoration: none;
-  transition: all 0.2s ease;
-}
-
-.forgot-btn:hover {
-  text-decoration: underline;
-}
 
 /* Login Button */
 .login-btn {
@@ -477,11 +350,7 @@ const handleForgotPassword = async () => {
   border-left: 4px solid #EF4444;
 }
 
-/* Forgot Dialog */
-.forgot-dialog {
-  backdrop-filter: blur(20px);
-  background: rgba(255, 255, 255, 0.98) !important;
-}
+
 
 /* Animations */
 @keyframes fadeInUp {
@@ -546,9 +415,5 @@ const handleForgotPassword = async () => {
 
 .v-theme--dark .form-label {
   color: rgba(255, 255, 255, 0.87);
-}
-
-.v-theme--dark .forgot-dialog {
-  background: rgba(30, 41, 59, 0.98) !important;
 }
 </style>

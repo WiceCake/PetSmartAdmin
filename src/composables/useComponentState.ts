@@ -32,7 +32,7 @@ export function useComponentState<T = any>(
         return JSON.parse(stored)
       }
     } catch (error) {
-      console.warn(`Failed to load component state for ${key}:`, error)
+      // Silent fail for state loading
     }
     return null
   }
@@ -44,7 +44,7 @@ export function useComponentState<T = any>(
     try {
       localStorage.setItem(storageKey, JSON.stringify(state.value))
     } catch (error) {
-      console.warn(`Failed to save component state for ${key}:`, error)
+      // Silent fail for state saving
     }
   }
 
@@ -61,7 +61,7 @@ export function useComponentState<T = any>(
     try {
       localStorage.removeItem(storageKey)
     } catch (error) {
-      console.warn(`Failed to clear component state for ${key}:`, error)
+      // Silent fail for state clearing
     }
   }
 

@@ -964,7 +964,7 @@ const loadProducts = async () => {
     totalProducts.value = result.count || 0
   } catch (error) {
     toast.error('Failed to load products')
-    console.error('Error loading products:', error)
+
   } finally {
     loading.value = false
   }
@@ -1099,7 +1099,7 @@ const saveProduct = async () => {
     await loadProducts()
 
   } catch (error) {
-    console.error('Failed to save product:', error)
+
     toast.error('Failed to save product')
   } finally {
     savingProduct.value = false
@@ -1171,7 +1171,7 @@ const duplicateProduct = async (product: any) => {
     loadProducts()
   } catch (error) {
     toast.error('Failed to duplicate product')
-    console.error('Error duplicating product:', error)
+
   }
 }
 
@@ -1194,7 +1194,7 @@ const deleteProduct = async () => {
     loadProducts()
   } catch (error) {
     toast.error('Failed to delete product')
-    console.error('Error deleting product:', error)
+
   } finally {
     deletingProduct.value = false
   }
@@ -1209,7 +1209,7 @@ onMounted(() => {
 /* Enhanced Products View Styling */
 .products-view {
   padding: 32px;
-  background: rgba(248, 250, 252, 0.5);
+  background: rgb(var(--v-theme-background));
   min-height: 100vh;
 }
 
@@ -1266,7 +1266,7 @@ onMounted(() => {
 
 .stats-card {
   transition: all 0.3s ease;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(var(--v-theme-outline), 0.2);
 }
 
 .stats-card:hover {
@@ -1286,12 +1286,12 @@ onMounted(() => {
 
 /* Enhanced Filters */
 .filters-card {
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(var(--v-theme-outline), 0.2);
   transition: all 0.3s ease;
 }
 
 .filters-header {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(var(--v-theme-outline), 0.2);
   padding-bottom: 16px;
 }
 
@@ -1327,13 +1327,13 @@ onMounted(() => {
 
 /* Enhanced Table */
 .products-table-card {
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(var(--v-theme-outline), 0.2);
   overflow: hidden;
 }
 
 .table-header {
-  background: rgba(248, 250, 252, 0.8);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgb(var(--v-theme-surface-variant));
+  border-bottom: 1px solid rgba(var(--v-theme-outline), 0.2);
 }
 
 .table-container {
@@ -1345,17 +1345,22 @@ onMounted(() => {
 }
 
 .products-table :deep(.v-data-table-header) {
-  background: rgba(248, 250, 252, 0.9);
+  background: rgb(var(--v-theme-surface-variant));
+}
+
+.products-table :deep(.v-data-table-header th) {
+  color: rgb(var(--v-theme-on-surface));
+  border-bottom-color: rgba(var(--v-theme-primary), 0.1);
 }
 
 /* Enhanced Pagination Footer */
 .pagination-footer {
-  background: rgba(248, 250, 252, 0.6);
+  background: rgb(var(--v-theme-surface-variant));
   border-radius: 0 0 20px 20px;
 }
 
 .footer-divider {
-  border-color: rgba(0, 0, 0, 0.06);
+  border-color: rgba(var(--v-theme-outline), 0.2);
 }
 
 .footer-content {
@@ -1590,6 +1595,57 @@ onMounted(() => {
 }
 
 /* Dark Theme Adjustments */
+.v-theme--dark .products-view {
+  background: rgb(var(--v-theme-background));
+}
+
+.v-theme--dark .page-header {
+  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.1), rgba(var(--v-theme-primary), 0.05));
+  border-color: rgba(var(--v-theme-primary), 0.2);
+}
+
+.v-theme--dark .stats-card {
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-color: rgba(var(--v-theme-outline), 0.2);
+}
+
+.v-theme--dark .stats-card:hover {
+  background: rgba(var(--v-theme-surface-variant), 0.4);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
+}
+
+.v-theme--dark .filters-card {
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-color: rgba(var(--v-theme-outline), 0.2);
+}
+
+.v-theme--dark .products-table-card {
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-color: rgba(var(--v-theme-outline), 0.2);
+}
+
+.v-theme--dark .products-table :deep(.v-data-table-header) {
+  background: rgba(var(--v-theme-primary), 0.1);
+}
+
+.v-theme--dark .products-table :deep(.v-data-table-header th) {
+  color: rgb(var(--v-theme-on-surface));
+  border-bottom-color: rgba(var(--v-theme-primary), 0.2);
+}
+
+.v-theme--dark .products-table :deep(.v-data-table__td) {
+  border-bottom-color: rgba(var(--v-theme-outline), 0.1);
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.v-theme--dark .pagination-footer {
+  background: rgba(var(--v-theme-surface-variant), 0.5);
+}
+
+.v-theme--dark .footer-divider {
+  border-color: rgba(var(--v-theme-outline), 0.2);
+}
+
 .v-theme--dark .page-title {
   color: rgba(255, 255, 255, 0.9);
 }

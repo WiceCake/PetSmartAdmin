@@ -456,7 +456,7 @@ const loadOwners = async () => {
       }))
     }
   } catch (error) {
-    console.error('Error loading owners:', error)
+
     submitError.value = 'Failed to load pet owners. Please try again.'
   } finally {
     loadingOwners.value = false
@@ -478,7 +478,7 @@ const searchOwners = async (search) => {
         }))
       }
     } catch (error) {
-      console.error('Error searching owners:', error)
+
       submitError.value = 'Failed to search owners. Please try again.'
     } finally {
       loadingOwners.value = false
@@ -554,7 +554,7 @@ const handleSubmit = async () => {
     }, 1500)
 
   } catch (error) {
-    console.error('Form submission error:', error)
+
     submitError.value = 'Failed to save pet. Please try again.'
   }
 }

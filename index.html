@@ -2,10 +2,109 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+
+    <!-- Favicon Configuration -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="shortcut icon" href="/favicon.png" />
+
+    <!-- Apple Touch Icon for iOS devices -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png" />
+
+    <!-- Standard favicon for browsers that don't support sizes -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+
+    <!-- Meta tags for better favicon support -->
+    <meta name="msapplication-TileImage" content="/favicon.png" />
+    <meta name="msapplication-TileColor" content="#2563eb" />
+    <meta name="theme-color" content="#2563eb" />
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/site.webmanifest" />
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PetSmart Admin Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
+
+    <!-- Early theme initialization script to prevent FOUC -->
+    <script>
+      (function() {
+        const STORAGE_KEY = 'petsmart-admin-theme';
+
+        function getSavedTheme() {
+          try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved && ['light', 'dark', 'system'].includes(saved)) {
+              return saved;
+            }
+          } catch (error) {
+            // Silent fail for localStorage issues
+          }
+          return 'system';
+        }
+
+        function getSystemPrefersDark() {
+          if (typeof window !== 'undefined' && window.matchMedia) {
+            return window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+          return false;
+        }
+
+        function shouldUseDarkMode(mode) {
+          if (mode === 'system') {
+            return getSystemPrefersDark();
+          }
+          return mode === 'dark';
+        }
+
+        function applyEarlyTheme() {
+          const savedMode = getSavedTheme();
+          const isDark = shouldUseDarkMode(savedMode);
+
+          document.documentElement.classList.toggle('dark-theme', isDark);
+          document.documentElement.classList.toggle('light-theme', !isDark);
+
+          const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+          if (metaThemeColor) {
+            const color = isDark ? '#1E293B' : '#2563eb';
+            metaThemeColor.setAttribute('content', color);
+          }
+
+          document.documentElement.setAttribute('data-theme-initialized', 'true');
+          document.documentElement.setAttribute('data-theme-mode', savedMode);
+          document.documentElement.setAttribute('data-theme-dark', isDark.toString());
+        }
+
+        // Apply theme immediately
+        applyEarlyTheme();
+
+        // Listen for system preference changes
+        if (window.matchMedia) {
+          const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+          const handleSystemChange = function(e) {
+            const currentMode = getSavedTheme();
+            if (currentMode === 'system') {
+              const isDark = e.matches;
+              document.documentElement.classList.toggle('dark-theme', isDark);
+              document.documentElement.classList.toggle('light-theme', !isDark);
+              document.documentElement.setAttribute('data-theme-dark', isDark.toString());
+
+              const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+              if (metaThemeColor) {
+                const color = isDark ? '#1E293B' : '#2563eb';
+                metaThemeColor.setAttribute('content', color);
+              }
+            }
+          };
+
+          if (mediaQuery.addEventListener) {
+            mediaQuery.addEventListener('change', handleSystemChange);
+          } else {
+            mediaQuery.addListener(handleSystemChange);
+          }
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>

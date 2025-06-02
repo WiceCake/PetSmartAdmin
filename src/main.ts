@@ -13,8 +13,15 @@ import * as directives from 'vuetify/directives'
 // Toast notifications
 import 'vue-toastification/dist/index.css'
 
+// Early theme initialization
+import { initializeEarlyTheme, injectThemeCSS, getSavedTheme, shouldUseDarkMode } from './utils/theme-init'
+
 import App from './App.vue'
 import router from './router'
+
+// Initialize theme as early as possible to prevent FOUC
+initializeEarlyTheme()
+injectThemeCSS()
 
 // Vuetify theme configuration with Material Design 3 inspired colors
 const vuetify = createVuetify({
@@ -55,7 +62,7 @@ const vuetify = createVuetify({
     },
   },
   theme: {
-    defaultTheme: 'light',
+    defaultTheme: shouldUseDarkMode(getSavedTheme()) ? 'dark' : 'light',
     themes: {
       light: {
         colors: {
@@ -134,14 +141,17 @@ app.use(Toast, toastOptions)
 
 // Global error handler for session expiration
 app.config.errorHandler = (error, instance, info) => {
-  console.error('Global error:', error, info)
-
-  // Handle authentication errors globally
+  // Keep essential error logging for production monitoring
   if (error && typeof error === 'object' && 'message' in error) {
     const errorMessage = (error as Error).message.toLowerCase()
+
+    // Log critical authentication errors for monitoring
     if (errorMessage.includes('session') || errorMessage.includes('unauthorized') || errorMessage.includes('jwt')) {
-      // Navigate to login page - auth store will handle session expiration in router guard
+
       router.push('/login')
+    } else {
+      // Log other critical errors for production monitoring
+
     }
   }
 }

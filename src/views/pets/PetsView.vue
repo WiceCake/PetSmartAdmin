@@ -556,14 +556,14 @@ const totalPages = computed(() => Math.ceil(totalPets.value / itemsPerPage.value
 
 const goToPage = (newPage: number) => {
   if (newPage >= 1 && newPage <= totalPages.value && !loading.value) {
-    console.log('Going to page:', newPage)
+
     page.value = newPage
     loadPets()
   }
 }
 
 const handleItemsPerPageChange = (newItemsPerPage: number) => {
-  console.log('Items per page changed:', newItemsPerPage)
+
   itemsPerPage.value = newItemsPerPage
   page.value = 1 // Reset to first page
   loadPets()
@@ -607,7 +607,7 @@ const handleRowClick = (event: Event, item: Pet) => {
     return
   }
   // You can add row click functionality here if needed
-  console.log('Row clicked:', item.name)
+
 }
 
 
@@ -622,7 +622,7 @@ watch(searchQuery, (newValue: string | null | undefined) => {
 
 // Type filter handlers
 const handleTypeFilterChange = (newType: string | null) => {
-  console.log('Type filter changed:', newType)
+
   selectedType.value = newType || ''
   page.value = 1 // Reset to first page when changing type filter
   loadPets()
@@ -677,22 +677,18 @@ const loadPets = async () => {
   loading.value = true
   error.value = null
 
-  console.log('Loading pets with params:', {
-    page: page.value,
-    itemsPerPage: itemsPerPage.value,
-    searchQuery: searchQuery.value
-  })
+
 
   try {
     const searchTerm = (searchQuery.value || '').trim()
     const typeFilter = selectedType.value || ''
-    console.log('API call params:', { page: page.value, itemsPerPage: itemsPerPage.value, searchTerm, typeFilter })
+
 
     const result = await ApiService.getPets(page.value, itemsPerPage.value, searchTerm, typeFilter)
-    console.log('API result:', result)
+
 
     if (result.error) {
-      console.error('API error:', result.error)
+
       throw result.error
     }
 
@@ -701,14 +697,9 @@ const loadPets = async () => {
     // All filtering should be handled server-side for proper pagination
     pets.value = result.data || []
     totalPets.value = result.count || 0
-    console.log('Pets loaded:', {
-      dataLength: result.data?.length || 0,
-      totalCount: result.count || 0,
-      currentPage: page.value,
-      actualData: result.data
-    })
+
   } catch (err) {
-    console.error('Failed to load pets:', err)
+
     error.value = err instanceof Error ? err.message : 'Failed to load pets'
     pets.value = []
     totalPets.value = 0
@@ -768,7 +759,7 @@ const handlePetSubmit = async (formData: FormData) => {
     closePetDialog()
     loadPets()
   } catch (err) {
-    console.error('Failed to save pet:', err)
+
     error.value = err instanceof Error ? err.message : 'Failed to save pet'
     toast.error(error.value)
   } finally {
@@ -797,7 +788,7 @@ const handleDeleteConfirm = async () => {
     // Navigate back to pets list if needed
     loadPets()
   } catch (err) {
-    console.error('Failed to delete pet:', err)
+
     const errorMessage = err instanceof Error ? err.message : 'Failed to delete pet'
     toast.error(errorMessage)
   } finally {
@@ -829,7 +820,7 @@ onMounted(() => {
 /* Enhanced Pets View Styling */
 .pets-view {
   padding: 32px;
-  background: rgba(248, 250, 252, 0.5);
+  background: rgb(var(--v-theme-background));
   min-height: 100vh;
 }
 
@@ -856,14 +847,14 @@ onMounted(() => {
 .page-title {
   font-size: 2.5rem;
   font-weight: 800;
-  color: rgba(0, 0, 0, 0.9);
+  color: rgb(var(--v-theme-on-surface));
   margin: 0 0 8px 0;
   line-height: 1.2;
 }
 
 .page-subtitle {
   font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.6);
+  color: rgb(var(--v-theme-on-surface-variant));
   margin: 0;
   line-height: 1.4;
 }
@@ -892,7 +883,7 @@ onMounted(() => {
 
 .stats-card {
   transition: all 0.3s ease;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(var(--v-theme-outline), 0.2);
 }
 
 .stats-card:hover {
@@ -912,12 +903,12 @@ onMounted(() => {
 
 /* Enhanced Filters */
 .filters-card {
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(var(--v-theme-outline), 0.2);
   transition: all 0.3s ease;
 }
 
 .filters-header {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(var(--v-theme-outline), 0.2);
   padding-bottom: 16px;
 }
 
@@ -950,9 +941,9 @@ onMounted(() => {
 
 .modern-custom-table :deep(thead th) {
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.87);
-  background: rgba(76, 175, 80, 0.02);
-  border-bottom: 2px solid rgba(76, 175, 80, 0.1);
+  color: rgb(var(--v-theme-on-surface));
+  background: rgba(var(--v-theme-primary), 0.02);
+  border-bottom: 2px solid rgba(var(--v-theme-primary), 0.1);
   white-space: nowrap;
   padding: 16px 12px;
 }
@@ -1134,31 +1125,67 @@ onMounted(() => {
 }
 
 /* Dark theme adjustments */
+.v-theme--dark .pets-view {
+  background: rgb(var(--v-theme-background));
+}
+
 .v-theme--dark .page-header {
-  background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05));
-  border-color: rgba(76, 175, 80, 0.2);
+  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.1), rgba(var(--v-theme-primary), 0.05));
+  border-color: rgba(var(--v-theme-primary), 0.2);
 }
 
 .v-theme--dark .stats-card {
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-color: rgba(var(--v-theme-outline), 0.2);
+}
+
+.v-theme--dark .stats-card:hover {
+  background: rgba(var(--v-theme-surface-variant), 0.4);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
+}
+
+.v-theme--dark .filters-card {
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-color: rgba(var(--v-theme-outline), 0.2);
 }
 
 .v-theme--dark .stats-icon-container {
   background: rgba(var(--v-theme-primary), 0.15);
 }
 
+.v-theme--dark .modern-custom-table :deep(thead th) {
+  color: rgb(var(--v-theme-on-surface));
+  background: rgba(var(--v-theme-primary), 0.1);
+  border-bottom-color: rgba(var(--v-theme-primary), 0.2);
+}
+
+.v-theme--dark .modern-custom-table :deep(tbody td) {
+  border-bottom-color: rgba(var(--v-theme-outline), 0.1);
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.v-theme--dark .modern-custom-table :deep(tbody tr:hover) {
+  background: rgba(var(--v-theme-primary), 0.05);
+}
+
+.v-theme--dark .custom-pagination-footer {
+  background: rgba(var(--v-theme-surface-variant), 0.5);
+  border-top-color: rgba(var(--v-theme-outline), 0.2);
+}
+
 .v-theme--dark .modern-data-table :deep(.v-data-table__th) {
-  color: rgba(255, 255, 255, 0.87);
-  background: rgba(76, 175, 80, 0.1);
-  border-bottom-color: rgba(76, 175, 80, 0.2);
+  color: rgb(var(--v-theme-on-surface));
+  background: rgba(var(--v-theme-primary), 0.1);
+  border-bottom-color: rgba(var(--v-theme-primary), 0.2);
 }
 
 .v-theme--dark .modern-data-table :deep(.v-data-table__tr:hover) {
-  background: rgba(76, 175, 80, 0.05);
+  background: rgba(var(--v-theme-primary), 0.05);
 }
 
 .v-theme--dark .modern-data-table :deep(.v-data-table__td) {
-  border-bottom-color: rgba(255, 255, 255, 0.05);
+  border-bottom-color: rgba(var(--v-theme-outline), 0.1);
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .v-theme--dark .modern-data-table :deep(.v-data-table-footer) {

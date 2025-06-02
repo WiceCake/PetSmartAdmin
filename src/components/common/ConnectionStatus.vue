@@ -73,7 +73,7 @@ const handleReconnect = async () => {
     // Also try to recover auth connection
     await authStore.recoverConnection()
   } catch (error) {
-    console.error('Manual reconnection failed:', error)
+    // Silent fail for manual reconnection
   }
 }
 

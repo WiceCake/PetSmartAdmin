@@ -81,6 +81,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/messages/:id',
+      name: 'ConversationDetail',
+      component: () => import(/* webpackChunkName: "communication" */ '@/views/messages/ConversationDetailView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/notifications',
       name: 'Notifications',
       component: () => import(/* webpackChunkName: "communication" */ '@/views/notifications/NotificationsView.vue'),
@@ -93,6 +99,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/admin-management',
+      name: 'AdminManagement',
+      component: () => import(/* webpackChunkName: "admin" */ '@/views/admin/AdminManagementView.vue'),
+      meta: { requiresAuth: true, requiresSuperAdmin: true }
+    },
+    {
       path: '/settings',
       name: 'Settings',
       component: () => import(/* webpackChunkName: "admin" */ '@/views/settings/SettingsView.vue'),
@@ -102,12 +114,6 @@ const router = createRouter({
       path: '/layout-test',
       name: 'LayoutTest',
       component: () => import(/* webpackChunkName: "dev" */ '@/views/LayoutTestView.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/state-test',
-      name: 'StatePersistenceTest',
-      component: () => import(/* webpackChunkName: "dev" */ '@/views/StatePersistenceTestView.vue'),
       meta: { requiresAuth: true }
     },
 
@@ -123,35 +129,23 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
 
-  console.log('Router guard:', {
-    to: to.path,
-    from: from.path,
-    initialized: authStore.initialized,
-    loading: authStore.loading,
-    isAuthenticated: authStore.isAuthenticated,
-    isAdmin: authStore.isAdmin
-  })
-
-  // Initialize auth if not already done (App.vue handles primary initialization)
-  if (!authStore.initialized && !authStore.loading) {
-    console.log('Initializing auth store from router guard')
-    await authStore.initialize()
-  }
-
-  // Wait for auth initialization to complete with timeout
+  // Wait for auth initialization to complete if it's in progress
+  // Don't trigger new initialization - App.vue handles primary initialization
   if (authStore.loading) {
-    console.log('Auth store is loading, waiting...')
-    // Use Promise.race to implement a proper timeout
+
+
+    // Wait for auth initialization with a reasonable timeout
     const authTimeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Auth initialization timeout')), 3000)
+      setTimeout(() => reject(new Error('Auth initialization timeout')), 5000)
     )
 
     const authComplete = new Promise((resolve) => {
       const checkAuth = () => {
         if (!authStore.loading) {
+
           resolve(true)
         } else {
-          setTimeout(checkAuth, 50)
+          setTimeout(checkAuth, 100) // Check every 100ms instead of 50ms
         }
       }
       checkAuth()
@@ -160,19 +154,32 @@ router.beforeEach(async (to, from, next) => {
     try {
       await Promise.race([authComplete, authTimeout])
     } catch (error) {
-      console.error('Auth initialization timeout, proceeding with current state')
+
+      // Don't treat timeout as an error - just proceed
+    }
+  }
+
+  // If auth is still not initialized and not loading, something went wrong
+  // Only then should we try to initialize (as a fallback)
+  if (!authStore.initialized && !authStore.loading) {
+
+    try {
+      await authStore.initialize()
+    } catch (error) {
+
     }
   }
 
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const requiresGuest = to.matched.some(record => record.meta.requiresGuest)
+  const requiresSuperAdmin = to.matched.some(record => record.meta.requiresSuperAdmin)
 
-  console.log('Route requirements:', { requiresAuth, requiresGuest })
+
 
   // Handle authentication requirements
   if (requiresAuth) {
     if (!authStore.isAuthenticated) {
-      console.log('Route requires auth but user not authenticated, redirecting to login')
+
       // Store intended destination for redirect after login
       const intendedUrl = to.fullPath
       if (intendedUrl !== '/login') {
@@ -184,7 +191,7 @@ router.beforeEach(async (to, from, next) => {
 
     if (!authStore.isAdmin) {
       // User is authenticated but not an admin
-      console.log('User is authenticated but not an admin, redirecting to login')
+
       const intendedUrl = to.fullPath
       if (intendedUrl !== '/login') {
         authStore.setRedirectUrl(intendedUrl)
@@ -192,12 +199,19 @@ router.beforeEach(async (to, from, next) => {
       next('/login')
       return
     }
+
+    // Check super admin requirement
+    if (requiresSuperAdmin) {
+      const userRole = authStore.adminUser?.role
+      if (userRole !== 'super_admin') {
+        next('/dashboard')
+        return
+      }
+    }
   }
 
   // Handle guest-only routes (like login page)
   if (requiresGuest && authStore.isAuthenticated && authStore.isAdmin) {
-    // User is already authenticated and is an admin, redirect to intended destination or dashboard
-    console.log('User already authenticated, redirecting from guest route')
     const redirectUrl = authStore.getAndClearRedirectUrl()
     next(redirectUrl)
     return
@@ -205,15 +219,12 @@ router.beforeEach(async (to, from, next) => {
 
   // Handle session expiration
   if (authStore.sessionExpired && to.path !== '/login') {
-    console.log('Session expired, redirecting to login')
     const intendedUrl = to.fullPath
     authStore.setRedirectUrl(intendedUrl)
     next('/login')
     return
   }
 
-  // All checks passed, proceed with navigation
-  console.log('All router checks passed, proceeding with navigation')
   next()
 })
 

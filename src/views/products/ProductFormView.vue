@@ -284,15 +284,15 @@ const saveProduct = async () => {
   try {
     if (isEditing.value) {
       // TODO: Update existing product
-      console.log('Updating product:', product.value)
+
     } else {
       // TODO: Create new product
-      console.log('Creating product:', product.value)
+
     }
     
     router.push('/products')
   } catch (error) {
-    console.error('Error saving product:', error)
+
   }
 }
 
@@ -300,10 +300,10 @@ const saveDraft = async () => {
   try {
     product.value.status = 'draft'
     // TODO: Save as draft
-    console.log('Saving draft:', product.value)
+
     router.push('/products')
   } catch (error) {
-    console.error('Error saving draft:', error)
+
   }
 }
 
@@ -311,7 +311,7 @@ const loadProduct = async () => {
   if (isEditing.value) {
     const productId = route.params.id
     // TODO: Load product data
-    console.log('Loading product:', productId)
+
     
     // Mock data for demonstration
     product.value = {

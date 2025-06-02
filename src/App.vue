@@ -52,14 +52,18 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useTheme } from 'vuetify'
 import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
 import { connectionMonitor } from '@/services/connectionMonitor'
+import { preloadCriticalComponents } from '@/utils/lazy-loading'
 import AppLayout from '@/components/layout/AppLayout.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
+const vuetifyTheme = useTheme()
 
-// Optimized keep-alive configuration - only cache essential components
 const keepAliveComponents = ref([
   'DashboardView',
   'UsersView',
@@ -89,25 +93,16 @@ const getComponentKey = (route: any) => {
 }
 
 onMounted(async () => {
-  // Initialize auth first
+  themeStore.initializeTheme(vuetifyTheme)
   await authStore.initialize()
+  preloadCriticalComponents()
 
-  // Temporarily disable connection monitoring for performance testing
   // if (authStore.isAuthenticated) {
   //   connectionMonitor.startMonitoring()
   // }
 })
 
-// Temporarily disable connection monitoring watcher
-// watch(() => authStore.isAuthenticated, (isAuthenticated) => {
-//   if (isAuthenticated) {
-//     console.log('🔍 User authenticated, starting connection monitoring')
-//     connectionMonitor.startMonitoring()
-//   } else {
-//     console.log('🛑 User not authenticated, stopping connection monitoring')
-//     connectionMonitor.stopMonitoring()
-//   }
-// })
+
 
 onUnmounted(() => {
   // connectionMonitor.stopMonitoring()
@@ -173,35 +168,43 @@ html {
   transform: translateX(100%);
 }
 
-/* Optimized card styles - single definition */
+/* Performance optimized card styles */
 .v-card {
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+  /* Only transition properties that change during theme switch */
+  transition: background-color 0.15s ease-out, color 0.15s ease-out, border-color 0.15s ease-out;
+}
+
+/* Reduce hover effects during theme transitions */
+html:not(.theme-changing) .v-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  transform: translateY(-1px);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.v-card:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
-  transform: translateY(-1px);
-}
-
-/* Enhanced button styles */
+/* Optimized button styles */
 .v-btn {
   font-weight: 500 !important;
   letter-spacing: 0.025em;
+  /* Reduced transition properties for better performance */
+  transition: background-color 0.15s ease-out, color 0.15s ease-out !important;
+}
+
+/* Only apply hover effects when not changing themes */
+html:not(.theme-changing) .v-btn:hover {
+  transform: translateY(-1px);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-.v-btn:hover {
-  transform: translateY(-1px);
-}
-
-/* Modern input styles */
+/* Optimized input styles */
 .v-field {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Only transition theme-related properties */
+  transition: background-color 0.15s ease-out, color 0.15s ease-out, border-color 0.15s ease-out;
 }
 
-.v-field:hover {
+html:not(.theme-changing) .v-field:hover {
   box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .v-field--focused {
@@ -260,22 +263,43 @@ html {
 
 .status-success {
   background-color: rgba(16, 185, 129, 0.1);
-  color: #059669;
+  color: rgb(var(--v-theme-success));
 }
 
 .status-warning {
   background-color: rgba(245, 158, 11, 0.1);
-  color: #D97706;
+  color: rgb(var(--v-theme-warning));
 }
 
 .status-error {
   background-color: rgba(239, 68, 68, 0.1);
-  color: #DC2626;
+  color: rgb(var(--v-theme-error));
 }
 
 .status-info {
   background-color: rgba(59, 130, 246, 0.1);
-  color: #2563EB;
+  color: rgb(var(--v-theme-info));
+}
+
+/* Dark theme status adjustments */
+.v-theme--dark .status-success {
+  background-color: rgba(52, 211, 153, 0.15);
+  color: rgb(var(--v-theme-success-lighten-1));
+}
+
+.v-theme--dark .status-warning {
+  background-color: rgba(251, 191, 36, 0.15);
+  color: rgb(var(--v-theme-warning-lighten-1));
+}
+
+.v-theme--dark .status-error {
+  background-color: rgba(248, 113, 113, 0.15);
+  color: rgb(var(--v-theme-error-lighten-1));
+}
+
+.v-theme--dark .status-info {
+  background-color: rgba(96, 165, 250, 0.15);
+  color: rgb(var(--v-theme-info-lighten-1));
 }
 
 /* Removed duplicate card and button styles - consolidated above */
@@ -286,7 +310,12 @@ html {
 }
 
 .v-data-table-header {
-  background-color: #f5f5f5 !important;
+  background-color: rgb(var(--v-theme-surface-variant)) !important;
+}
+
+/* Dark theme data table */
+.v-theme--dark .v-data-table-header {
+  background-color: rgba(var(--v-theme-surface-variant), 0.8) !important;
 }
 
 /* Form styling */

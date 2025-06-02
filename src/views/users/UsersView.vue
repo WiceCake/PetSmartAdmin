@@ -622,11 +622,6 @@ const dateFilterOptions = [
 const loadUsers = async () => {
   loading.value = true
   error.value = null
-  console.log('Loading users with params:', {
-    page: page.value,
-    itemsPerPage: itemsPerPage.value,
-    search: search.value
-  })
   try {
     const { data, error: apiError, count } = await ApiService.getUsers(
       page.value,
@@ -640,14 +635,7 @@ const loadUsers = async () => {
 
     users.value = data || []
     totalUsers.value = count || 0
-    console.log('Users loaded:', {
-      dataLength: data?.length || 0,
-      totalCount: count || 0,
-      currentPage: page.value,
-      sampleUser: data?.[0] || null
-    })
   } catch (err) {
-    console.error('Failed to load users:', err)
     error.value = err instanceof Error ? err.message : 'Failed to load users'
     users.value = []
     totalUsers.value = 0
@@ -666,14 +654,14 @@ const totalPages = computed(() => Math.ceil(totalUsers.value / itemsPerPage.valu
 
 const goToPage = (newPage: number) => {
   if (newPage >= 1 && newPage <= totalPages.value && !loading.value) {
-    console.log('Going to page:', newPage)
+
     page.value = newPage
     loadUsers()
   }
 }
 
 const handleItemsPerPageChange = (newItemsPerPage: number) => {
-  console.log('Items per page changed:', newItemsPerPage)
+
   itemsPerPage.value = newItemsPerPage
   page.value = 1 // Reset to first page
   loadUsers()
@@ -717,7 +705,7 @@ const handleRowClick = (event: Event, item: User) => {
     return
   }
   // You can add row click functionality here if needed
-  console.log('Row clicked:', item.username)
+
 }
 
 // Helper function to get full name
@@ -797,7 +785,7 @@ const handleUserSubmit = async (formData: FormData) => {
     closeUserDialog()
     loadUsers()
   } catch (err) {
-    console.error('Failed to save user:', err)
+
     error.value = err instanceof Error ? err.message : 'Failed to save user'
     toast.error(error.value)
   } finally {
@@ -829,7 +817,7 @@ const handlePasswordReset = async (newPassword: string) => {
     showPasswordResetDialog.value = false
     userToResetPassword.value = null
   } catch (err) {
-    console.error('Failed to reset password:', err)
+
     const errorMessage = err instanceof Error ? err.message : 'Failed to reset password'
     toast.error(errorMessage)
   } finally {
@@ -860,7 +848,7 @@ const handleDeleteConfirm = async () => {
     // Reload users to reflect the change
     loadUsers()
   } catch (err) {
-    console.error('Failed to delete user:', err)
+
     const errorMessage = err instanceof Error ? err.message : 'Failed to delete user'
     toast.error(errorMessage)
   } finally {
@@ -959,10 +947,7 @@ const exportUsers = async () => {
     link.click()
     document.body.removeChild(link)
 
-    console.log(`Successfully exported ${data.length} users`)
-
   } catch (err) {
-    console.error('Failed to export users:', err)
     error.value = err instanceof Error ? err.message : 'Failed to export users'
   } finally {
     exporting.value = false
@@ -978,7 +963,7 @@ onMounted(() => {
 /* Enhanced Users View Styling */
 .users-view {
   padding: 32px;
-  background: rgba(248, 250, 252, 0.5);
+  background: rgb(var(--v-theme-background));
   min-height: 100vh;
 }
 
@@ -1006,14 +991,14 @@ onMounted(() => {
 .page-title {
   font-size: 2.5rem;
   font-weight: 800;
-  color: rgba(0, 0, 0, 0.9);
+  color: rgb(var(--v-theme-on-surface));
   margin: 0 0 8px 0;
   line-height: 1.2;
 }
 
 .page-subtitle {
   font-size: 1.125rem;
-  color: rgba(0, 0, 0, 0.6);
+  color: rgb(var(--v-theme-on-surface-variant));
   margin: 0;
   line-height: 1.4;
 }
@@ -1043,7 +1028,7 @@ onMounted(() => {
 
 .stats-card {
   transition: all 0.3s ease;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(var(--v-theme-outline), 0.2);
 }
 
 .stats-card:hover {
@@ -1063,12 +1048,12 @@ onMounted(() => {
 
 /* Enhanced Filters */
 .filters-card {
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(var(--v-theme-outline), 0.2);
   transition: all 0.3s ease;
 }
 
 .filters-header {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(var(--v-theme-outline), 0.2);
   padding-bottom: 16px;
 }
 
@@ -1125,7 +1110,7 @@ onMounted(() => {
   border-radius: 12px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
+  scrollbar-color: rgba(var(--v-theme-primary), 0.3) transparent;
 }
 
 .table-wrapper::-webkit-scrollbar {
@@ -1133,44 +1118,44 @@ onMounted(() => {
 }
 
 .table-wrapper::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(var(--v-theme-outline), 0.1);
   border-radius: 3px;
 }
 
 .table-wrapper::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.3);
+  background: rgba(var(--v-theme-primary), 0.3);
   border-radius: 3px;
 }
 
 .table-wrapper::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.5);
+  background: rgba(var(--v-theme-primary), 0.5);
 }
 
 /* Custom Table Styling */
 .modern-custom-table {
   border-radius: 0 0 16px 16px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(var(--v-theme-outline), 0.2);
   border-top: none;
   min-width: 800px;
 }
 
 .modern-custom-table :deep(thead th) {
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.87);
-  background: rgba(99, 102, 241, 0.02);
-  border-bottom: 2px solid rgba(99, 102, 241, 0.1);
+  color: rgb(var(--v-theme-on-surface));
+  background: rgba(var(--v-theme-primary), 0.02);
+  border-bottom: 2px solid rgba(var(--v-theme-primary), 0.1);
   white-space: nowrap;
   padding: 16px 12px;
 }
 
 .modern-custom-table :deep(tbody td) {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(var(--v-theme-outline), 0.1);
   vertical-align: middle;
   padding: 12px;
 }
 
 .modern-custom-table :deep(tbody tr:hover) {
-  background: rgba(99, 102, 241, 0.02);
+  background: rgba(var(--v-theme-primary), 0.02);
 }
 
 .table-row {
@@ -1184,8 +1169,8 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-  background: rgba(99, 102, 241, 0.01);
+  border-top: 1px solid rgba(var(--v-theme-outline), 0.2);
+  background: rgba(var(--v-theme-primary), 0.01);
   border-radius: 0 0 16px 16px;
   min-height: 64px;
 }
@@ -1267,8 +1252,8 @@ onMounted(() => {
 /* Table Footer/Pagination Styling */
 .modern-table :deep(.v-data-table-footer) {
   padding: 16px;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-  background: rgba(99, 102, 241, 0.01);
+  border-top: 1px solid rgba(var(--v-theme-outline), 0.2);
+  background: rgba(var(--v-theme-primary), 0.01);
 }
 
 .modern-table :deep(.v-data-table-footer__items-per-page) {
@@ -1279,14 +1264,7 @@ onMounted(() => {
   margin-left: auto;
 }
 
-.filters-card {
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
-.filters-card:hover {
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-}
 
 .search-wrapper {
   position: relative;
@@ -1307,7 +1285,7 @@ onMounted(() => {
 }
 
 .users-table-card {
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(var(--v-theme-outline), 0.2);
   overflow: hidden;
 }
 
@@ -1320,32 +1298,32 @@ onMounted(() => {
 }
 
 .modern-table :deep(.v-data-table-header) {
-  background: rgba(99, 102, 241, 0.05);
+  background: rgba(var(--v-theme-primary), 0.05);
 }
 
 .modern-table :deep(.v-data-table-header th) {
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.87);
-  border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+  color: rgb(var(--v-theme-on-surface));
+  border-bottom: 1px solid rgba(var(--v-theme-primary), 0.1);
 }
 
 .modern-table :deep(.v-data-table__tr:hover) {
-  background: rgba(99, 102, 241, 0.02);
+  background: rgba(var(--v-theme-primary), 0.02);
 }
 
 .modern-table :deep(.v-data-table__td) {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(var(--v-theme-outline), 0.1);
   padding: 16px;
 }
 
 /* Table cell styling */
 .user-avatar {
-  border: 2px solid rgba(99, 102, 241, 0.1);
+  border: 2px solid rgba(var(--v-theme-primary), 0.1);
   transition: all 0.2s ease;
 }
 
 .user-avatar:hover {
-  border-color: rgba(99, 102, 241, 0.3);
+  border-color: rgba(var(--v-theme-primary), 0.3);
   transform: scale(1.05);
 }
 
@@ -1952,33 +1930,83 @@ onMounted(() => {
 }
 
 /* Dark theme adjustments */
+.v-theme--dark .users-view {
+  background: rgb(var(--v-theme-background));
+}
+
 .v-theme--dark .page-header {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.05));
-  border-color: rgba(99, 102, 241, 0.2);
+  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.1), rgba(var(--v-theme-primary), 0.05));
+  border-color: rgba(var(--v-theme-primary), 0.2);
+}
+
+.v-theme--dark .stats-card {
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-color: rgba(var(--v-theme-outline), 0.2);
+}
+
+.v-theme--dark .stats-card:hover {
+  background: rgba(var(--v-theme-surface-variant), 0.4);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3) !important;
 }
 
 .v-theme--dark .filters-card {
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-color: rgba(var(--v-theme-outline), 0.2);
 }
 
 .v-theme--dark .users-table-card {
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-color: rgba(var(--v-theme-outline), 0.2);
 }
 
 .v-theme--dark .modern-table :deep(.v-data-table-header) {
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(var(--v-theme-primary), 0.1);
+}
+
+.v-theme--dark .modern-table :deep(.v-data-table-footer) {
+  background: rgba(var(--v-theme-surface-variant), 0.5);
+  border-top-color: rgba(var(--v-theme-outline), 0.2);
+}
+
+.v-theme--dark .modern-custom-table {
+  border-color: rgba(var(--v-theme-outline), 0.2);
+}
+
+.v-theme--dark .user-avatar {
+  border-color: rgba(var(--v-theme-primary), 0.2);
+}
+
+.v-theme--dark .user-avatar:hover {
+  border-color: rgba(var(--v-theme-primary), 0.4);
 }
 
 .v-theme--dark .modern-table :deep(.v-data-table-header th) {
-  color: rgba(255, 255, 255, 0.87);
-  border-bottom-color: rgba(99, 102, 241, 0.2);
+  color: rgb(var(--v-theme-on-surface));
+  border-bottom-color: rgba(var(--v-theme-primary), 0.2);
 }
 
 .v-theme--dark .modern-table :deep(.v-data-table__tr:hover) {
-  background: rgba(99, 102, 241, 0.05);
+  background: rgba(var(--v-theme-primary), 0.05);
 }
 
 .v-theme--dark .modern-table :deep(.v-data-table__td) {
-  border-bottom-color: rgba(255, 255, 255, 0.05);
+  border-bottom-color: rgba(var(--v-theme-outline), 0.1);
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.v-theme--dark .modern-custom-table :deep(thead th) {
+  color: rgb(var(--v-theme-on-surface));
+  background: rgba(var(--v-theme-primary), 0.1);
+  border-bottom-color: rgba(var(--v-theme-primary), 0.2);
+}
+
+.v-theme--dark .modern-custom-table :deep(tbody td) {
+  border-bottom-color: rgba(var(--v-theme-outline), 0.1);
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.v-theme--dark .custom-pagination-footer {
+  background: rgba(var(--v-theme-surface-variant), 0.5);
+  border-top-color: rgba(var(--v-theme-outline), 0.2);
 }
 </style>

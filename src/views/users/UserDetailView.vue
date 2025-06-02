@@ -475,7 +475,7 @@ const handleEditSubmit = async (formData: FormData) => {
     toast.success('User updated successfully!')
     showEditDialog.value = false
   } catch (err) {
-    console.error('Failed to update user:', err)
+
     const errorMessage = err instanceof Error ? err.message : 'Failed to update user'
     toast.error(errorMessage)
   } finally {
@@ -501,7 +501,7 @@ const toggleUserStatus = async () => {
     const statusText = newVisibility ? 'public' : 'private'
     toast.success(`User profile set to ${statusText}`)
   } catch (err) {
-    console.error('Failed to update user status:', err)
+
     const errorMessage = err instanceof Error ? err.message : 'Failed to update user status'
     toast.error(errorMessage)
   } finally {
@@ -533,7 +533,7 @@ const handleDeleteConfirm = async () => {
     // Navigate back to users list
     router.push('/users')
   } catch (err) {
-    console.error('Failed to delete user:', err)
+
     const errorMessage = err instanceof Error ? err.message : 'Failed to delete user'
     toast.error(errorMessage)
   } finally {
@@ -564,7 +564,7 @@ const loadUser = async () => {
 
     user.value = data
   } catch (err) {
-    console.error('Failed to load user:', err)
+
     error.value = err instanceof Error ? err.message : 'Failed to load user'
     user.value = null
   } finally {

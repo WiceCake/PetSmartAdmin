@@ -43,7 +43,7 @@ export const useSidebarStore = defineStore('sidebar', () => {
         return JSON.parse(stored)
       }
     } catch (error) {
-      console.warn('Failed to load sidebar state from localStorage:', error)
+      // Silent fail for localStorage loading
     }
     return null
   }
@@ -62,7 +62,7 @@ export const useSidebarStore = defineStore('sidebar', () => {
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
     } catch (error) {
-      console.warn('Failed to save sidebar state to localStorage:', error)
+      // Silent fail for localStorage saving
     }
   }
 
@@ -169,7 +169,7 @@ export const useSidebarStore = defineStore('sidebar', () => {
     try {
       localStorage.removeItem(STORAGE_KEY)
     } catch (error) {
-      console.warn('Failed to clear sidebar state from localStorage:', error)
+      // Silent fail for localStorage clearing
     }
   }
 

@@ -97,7 +97,7 @@ export class DashboardService {
         revenueTrend: Math.round(revenueTrend * 10) / 10
       }
     } catch (error) {
-      console.error('Error fetching dashboard metrics:', error)
+
       // Return fallback data
       return {
         totalUsers: 0,
@@ -151,7 +151,7 @@ export class DashboardService {
         ]
       }
     } catch (error) {
-      console.error('Error fetching performance chart data:', error)
+
       // Return fallback data
       const labels = Array.from({ length: days }, (_, i) => 
         format(subDays(new Date(), days - 1 - i), 'MMM dd')
@@ -205,7 +205,7 @@ export class DashboardService {
 
       return activities
     } catch (error) {
-      console.error('Error fetching recent activities:', error)
+
       return []
     }
   }
@@ -258,7 +258,7 @@ export class DashboardService {
 
       return results
     } catch (error) {
-      console.error('Error performing global search:', error)
+
       return []
     }
   }

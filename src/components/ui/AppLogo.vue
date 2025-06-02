@@ -103,18 +103,15 @@ const logoStyles = computed(() => ({
 }))
 
 const handleImageError = () => {
-  console.warn(`Logo image failed to load: ${logoSrc.value}`)
   showFallback.value = true
 
   // Try to load placeholder as backup
   const img = new Image()
   img.onload = () => {
-    // If placeholder loads successfully, we can use it
-    console.info('Fallback placeholder logo loaded successfully')
+    // Placeholder loaded successfully
   }
   img.onerror = () => {
-    // If even placeholder fails, we'll rely on text fallback
-    console.warn('Placeholder logo also failed to load, using text fallback')
+    // Use text fallback if placeholder also fails
   }
   img.src = ASSETS.logos.placeholder
 }

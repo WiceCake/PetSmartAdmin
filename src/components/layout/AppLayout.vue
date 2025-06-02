@@ -164,12 +164,7 @@
                   <v-list-item
                     prepend-icon="mdi-account"
                     title="Profile"
-                    @click="$router.push('/profile')"
-                  />
-                  <v-list-item
-                    prepend-icon="mdi-cog"
-                    title="Settings"
-                    @click="$router.push('/settings')"
+                    @click="openProfileModal"
                   />
                   <v-divider />
                   <v-list-item
@@ -190,7 +185,7 @@
               variant="text"
               size="small"
               class="mb-2"
-              @click="$router.push('/profile')"
+              @click="openProfileModal"
             />
             <v-btn
               :icon="isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'"
@@ -241,19 +236,7 @@
 
         <v-spacer />
 
-        <!-- Search Bar -->
-        <div class="app-bar-search">
-          <v-text-field
-            placeholder="Search anything..."
-            prepend-inner-icon="mdi-magnify"
-            variant="outlined"
-            density="compact"
-            hide-details
-            clearable
-            class="search-field"
-            @input="handleGlobalSearch"
-          />
-        </div>
+
 
         <!-- Action Buttons -->
         <div class="app-bar-actions">
@@ -263,13 +246,13 @@
             variant="text"
             class="action-btn notification-btn"
             @click="toggleNotifications"
-            :aria-label="`Notifications${unreadNotifications > 0 ? ` (${unreadNotifications} unread)` : ''}`"
+            :aria-label="`Notifications${totalUnreadCount > 0 ? ` (${totalUnreadCount} unread)` : ''}`"
             role="button"
             tabindex="0"
           >
             <v-badge
-              v-if="unreadNotifications > 0"
-              :content="unreadNotifications"
+              v-if="totalUnreadCount > 0"
+              :content="totalUnreadCount"
               color="error"
               floating
               class="notification-badge"
@@ -317,8 +300,8 @@
           <div class="notifications-header__title-section">
             <h2 class="notifications-header__title">Notifications</h2>
             <v-chip
-              v-if="unreadNotifications > 0"
-              :text="unreadNotifications.toString()"
+              v-if="totalUnreadCount > 0"
+              :text="totalUnreadCount.toString()"
               color="error"
               size="small"
               class="notifications-header__badge"
@@ -327,11 +310,11 @@
 
           <div class="notifications-header__actions">
             <v-btn
-              v-if="unreadNotifications > 0"
+              v-if="realUnreadCount > 0"
               variant="text"
               size="small"
               class="notifications-header__action-btn"
-              @click="markAllAsRead"
+              @click="markAllNotificationsAsRead"
             >
               Mark all read
             </v-btn>
@@ -352,7 +335,13 @@
 
       <!-- Notifications List -->
       <div class="notifications-content">
-        <div v-if="notifications.length === 0" class="notifications-empty">
+        <div v-if="notificationsLoading" class="notifications-loading">
+          <div class="d-flex justify-center py-8">
+            <v-progress-circular indeterminate color="primary" size="48" />
+          </div>
+        </div>
+
+        <div v-else-if="realNotifications.length === 0" class="notifications-empty">
           <div class="notifications-empty__content">
             <v-icon size="64" color="grey-lighten-1">mdi-bell-outline</v-icon>
             <h3 class="notifications-empty__title">No notifications</h3>
@@ -362,14 +351,14 @@
 
         <div v-else class="notifications-list">
           <div
-            v-for="notification in notifications"
+            v-for="notification in drawerNotifications"
             :key="notification.id"
             class="notification-item"
             :class="{
-              'notification-item--unread': !notification.read,
-              'notification-item--read': notification.read
+              'notification-item--unread': !notification.is_read,
+              'notification-item--read': notification.is_read
             }"
-            @click="markAsRead(notification)"
+            @click="markAsRead(notification.id)"
           >
             <div class="notification-item__indicator" />
 
@@ -390,23 +379,32 @@
             <div class="notification-item__content">
               <div class="notification-item__header">
                 <h4 class="notification-item__title">{{ notification.title }}</h4>
-                <span class="notification-item__time">{{ formatNotificationTime(notification.timestamp) }}</span>
+                <span class="notification-item__time">{{ formatTimeAgo(notification.created_at) }}</span>
               </div>
 
               <p class="notification-item__message">{{ notification.message }}</p>
 
-              <div v-if="notification.actions" class="notification-item__actions">
+              <div v-if="notification.action_url" class="notification-item__actions">
                 <v-btn
-                  v-for="action in notification.actions"
-                  :key="action.label"
-                  :variant="action.primary ? 'elevated' : 'text'"
-                  :color="action.primary ? 'primary' : 'default'"
+                  variant="text"
+                  color="primary"
                   size="small"
                   class="notification-item__action-btn"
-                  @click.stop="handleNotificationAction(notification, action)"
+                  @click.stop="handleNotificationAction(notification)"
                 >
-                  {{ action.label }}
+                  {{ notification.action_label || 'View' }}
                 </v-btn>
+              </div>
+
+              <div v-if="notification.priority === 'high'" class="notification-item__priority mt-2">
+                <v-chip
+                  :color="getPriorityColor(notification.priority)"
+                  size="x-small"
+                  variant="tonal"
+                >
+                  <v-icon start size="12">{{ getPriorityIcon(notification.priority) }}</v-icon>
+                  High Priority
+                </v-chip>
               </div>
             </div>
 
@@ -423,10 +421,10 @@
                 </template>
                 <v-list density="compact">
                   <v-list-item
-                    v-if="!notification.read"
+                    v-if="!notification.is_read"
                     prepend-icon="mdi-check"
                     title="Mark as read"
-                    @click="markAsRead(notification)"
+                    @click="markAsRead(notification.id)"
                   />
                   <v-list-item
                     v-else
@@ -437,7 +435,7 @@
                   <v-list-item
                     prepend-icon="mdi-delete"
                     title="Delete"
-                    @click="deleteNotification(notification)"
+                    @click="deleteRealNotification(notification.id)"
                   />
                 </v-list>
               </v-menu>
@@ -445,7 +443,268 @@
           </div>
         </div>
       </div>
+
+      <!-- Fixed Footer with View All Button -->
+      <div v-if="realNotifications.length > 0" class="notifications-drawer-footer">
+        <v-divider />
+        <div class="notifications-footer-content">
+          <v-btn
+            color="primary"
+            variant="outlined"
+            size="large"
+            block
+            prepend-icon="mdi-bell-outline"
+            @click="navigateToNotifications"
+            class="view-all-btn"
+          >
+            <span class="font-weight-medium">
+              View All Notifications
+              <span v-if="realNotifications.length > 5" class="text-caption ms-1">
+                ({{ realNotifications.length - 5 }}+ more)
+              </span>
+            </span>
+          </v-btn>
+        </div>
+      </div>
     </v-navigation-drawer>
+
+    <!-- User Profile Modal -->
+    <v-dialog v-model="showProfileModal" max-width="600" persistent>
+      <v-card class="profile-modal rounded-xl">
+        <div class="modal-header pa-6 pb-4">
+          <div class="d-flex align-center justify-space-between">
+            <div class="d-flex align-center">
+              <v-avatar size="48" class="me-4">
+                <v-img
+                  v-if="userAvatar"
+                  :src="userAvatar"
+                  alt="User Avatar"
+                />
+                <v-icon v-else size="32" color="primary">mdi-account</v-icon>
+              </v-avatar>
+              <div>
+                <h3 class="text-h5 font-weight-bold">User Profile</h3>
+                <p class="text-body-2 text-medium-emphasis ma-0">
+                  Manage your account information and preferences
+                </p>
+              </div>
+            </div>
+            <v-btn
+              icon="mdi-close"
+              variant="text"
+              size="small"
+              @click="closeProfileModal"
+            />
+          </div>
+        </div>
+
+        <v-divider></v-divider>
+
+        <v-card-text class="pa-6">
+          <v-form ref="profileForm" v-model="profileFormValid">
+            <div class="profile-section mb-6">
+              <h4 class="text-subtitle-1 font-weight-medium mb-4">
+                <v-icon class="me-2" size="20">mdi-account-details</v-icon>
+                Personal Information
+              </h4>
+              <v-row>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="profileData.firstName"
+                    label="First Name"
+                    variant="outlined"
+                    class="enhanced-field"
+                    :rules="[profileRules.required]"
+                    prepend-inner-icon="mdi-account"
+                  ></v-text-field>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="profileData.lastName"
+                    label="Last Name"
+                    variant="outlined"
+                    class="enhanced-field"
+                    :rules="[profileRules.required]"
+                    prepend-inner-icon="mdi-account"
+                  ></v-text-field>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="profileData.username"
+                    label="Username"
+                    variant="outlined"
+                    class="enhanced-field"
+                    prepend-inner-icon="mdi-at"
+                  ></v-text-field>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="profileData.email"
+                    label="Email Address"
+                    type="email"
+                    variant="outlined"
+                    class="enhanced-field"
+                    :rules="[profileRules.required, profileRules.email]"
+                    prepend-inner-icon="mdi-email"
+                    readonly
+                  ></v-text-field>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="profileData.phone"
+                    label="Phone Number (Optional)"
+                    variant="outlined"
+                    class="enhanced-field"
+                    prepend-inner-icon="mdi-phone"
+                  ></v-text-field>
+                </v-col>
+                <v-col cols="12">
+                  <v-textarea
+                    v-model="profileData.bio"
+                    label="Bio"
+                    variant="outlined"
+                    class="enhanced-field"
+                    prepend-inner-icon="mdi-text"
+                    rows="3"
+                    placeholder="Tell us about yourself..."
+                  ></v-textarea>
+                </v-col>
+                <v-col cols="12">
+                  <v-text-field
+                    v-model="profileData.role"
+                    label="Role"
+                    variant="outlined"
+                    class="enhanced-field"
+                    prepend-inner-icon="mdi-shield-account"
+                    readonly
+                  ></v-text-field>
+                </v-col>
+              </v-row>
+            </div>
+
+            <div class="profile-section">
+              <h4 class="text-subtitle-1 font-weight-medium mb-4">
+                <v-icon class="me-2" size="20">mdi-lock</v-icon>
+                Security
+              </h4>
+              <v-row>
+                <v-col cols="12">
+                  <v-btn
+                    color="warning"
+                    variant="outlined"
+                    prepend-icon="mdi-key-change"
+                    @click="openPasswordChangeDialog"
+                  >
+                    Change Password
+                  </v-btn>
+                </v-col>
+              </v-row>
+            </div>
+          </v-form>
+        </v-card-text>
+
+        <v-divider></v-divider>
+
+        <v-card-actions class="pa-6">
+          <v-spacer></v-spacer>
+          <v-btn
+            variant="text"
+            class="me-3"
+            @click="closeProfileModal"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            :loading="savingProfile"
+            :disabled="!profileFormValid"
+            @click="saveProfile"
+            class="save-btn"
+          >
+            Save Changes
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Password Change Dialog -->
+    <v-dialog v-model="showPasswordDialog" max-width="500" persistent>
+      <v-card class="rounded-xl">
+        <v-card-title class="pa-6 pb-4">
+          <div class="d-flex align-center justify-space-between">
+            <div class="d-flex align-center">
+              <v-icon class="me-3" color="warning">mdi-key-change</v-icon>
+              <span class="text-h5 font-weight-bold">Change Password</span>
+            </div>
+            <v-btn
+              icon="mdi-close"
+              variant="text"
+              size="small"
+              @click="closePasswordDialog"
+            />
+          </div>
+        </v-card-title>
+
+        <v-divider></v-divider>
+
+        <v-card-text class="pa-6">
+          <v-form ref="passwordForm" v-model="passwordFormValid">
+            <v-text-field
+              v-model="passwordData.currentPassword"
+              label="Current Password"
+              type="password"
+              variant="outlined"
+              class="enhanced-field mb-4"
+              :rules="[profileRules.required]"
+              prepend-inner-icon="mdi-lock"
+            ></v-text-field>
+
+            <v-text-field
+              v-model="passwordData.newPassword"
+              label="New Password"
+              type="password"
+              variant="outlined"
+              class="enhanced-field mb-4"
+              :rules="[profileRules.required, passwordRules.minLength]"
+              prepend-inner-icon="mdi-lock-plus"
+            ></v-text-field>
+
+            <v-text-field
+              v-model="passwordData.confirmPassword"
+              label="Confirm New Password"
+              type="password"
+              variant="outlined"
+              class="enhanced-field"
+              :rules="[profileRules.required, passwordRules.match]"
+              prepend-inner-icon="mdi-lock-check"
+            ></v-text-field>
+          </v-form>
+        </v-card-text>
+
+        <v-divider></v-divider>
+
+        <v-card-actions class="pa-6">
+          <v-spacer></v-spacer>
+          <v-btn
+            variant="text"
+            class="me-3"
+            @click="closePasswordDialog"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="warning"
+            variant="flat"
+            :loading="changingPassword"
+            :disabled="!passwordFormValid"
+            @click="changePassword"
+          >
+            Change Password
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-app>
 </template>
 
@@ -454,17 +713,91 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTheme } from 'vuetify'
 import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
 import { useSidebarStore } from '@/stores/sidebar'
 import { useScrollPosition } from '@/composables/useScrollPosition'
 import AppLogo from '@/components/ui/AppLogo.vue'
 import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
-// import SearchBar from '@/components/ui/SearchBar.vue'
+import { useToast } from 'vue-toastification'
+import { ApiService } from '@/services/api'
+import { useRoleAccess } from '@/composables/useRoleAccess'
+import { useNotifications } from '@/composables/useNotifications'
+import { useMessaging } from '@/composables/useMessaging'
 
 const route = useRoute()
 const router = useRouter()
 const theme = useTheme()
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
 const sidebarStore = useSidebarStore()
+const toast = useToast()
+const { permissions, visibleNavItems } = useRoleAccess()
+const {
+  notifications: realNotifications,
+  unreadCount: realUnreadCount,
+  loading: notificationsLoading,
+  loadNotifications,
+  markAsRead,
+  markAllAsRead: markAllNotificationsAsRead,
+  deleteNotification: deleteRealNotification,
+  getNotificationIcon,
+  getNotificationColor,
+  getPriorityIcon,
+  getPriorityColor,
+  formatTimeAgo
+} = useNotifications()
+
+// Use messaging composable for unread message count
+const {
+  totalUnreadMessages,
+  loadConversations,
+  setupRealTimeSubscriptions: setupMessagingSubscriptions,
+  cleanup: cleanupMessaging
+} = useMessaging()
+
+// Profile modal state
+const showProfileModal = ref(false)
+const savingProfile = ref(false)
+const profileFormValid = ref(false)
+
+// Password dialog state
+const showPasswordDialog = ref(false)
+const changingPassword = ref(false)
+const passwordFormValid = ref(false)
+
+// Password data
+const passwordData = ref({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+
+// Profile data
+const profileData = ref({
+  firstName: '',
+  lastName: '',
+  username: '',
+  email: '',
+  phone: '',
+  bio: '',
+  role: 'Administrator',
+  profilePic: null as string | null
+})
+
+// Profile validation rules
+const profileRules = {
+  required: (value: any) => !!value || 'This field is required',
+  email: (value: string) => {
+    const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return pattern.test(value) || 'Please enter a valid email address'
+  }
+}
+
+// Password validation rules
+const passwordRules = {
+  minLength: (value: string) => value.length >= 8 || 'Password must be at least 8 characters',
+  match: (value: string) => value === passwordData.value.newPassword || 'Passwords do not match'
+}
 
 // Initialize scroll position management
 const { restoreScrollPosition, saveScrollPosition } = useScrollPosition({
@@ -495,66 +828,18 @@ const notificationDrawerState = computed(() => ({
   isTablet: isTablet.value,
   width: isMobile.value ? '100vw' : isTablet.value ? '380' : '420'
 }))
-const notifications = ref([
-  {
-    id: 1,
-    title: 'New Order Received',
-    message: 'Order #12345 has been placed by John Smith for premium dog food.',
-    type: 'success',
-    read: false,
-    timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
-    actions: [
-      { label: 'View Order', primary: true, action: 'view-order', data: { orderId: 12345 } },
-      { label: 'Dismiss', primary: false, action: 'dismiss' }
-    ]
-  },
-  {
-    id: 2,
-    title: 'Appointment Reminder',
-    message: 'Upcoming grooming appointment for Buddy at 2:00 PM today.',
-    type: 'info',
-    read: false,
-    timestamp: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
-    actions: [
-      { label: 'View Details', primary: true, action: 'view-appointment', data: { appointmentId: 456 } }
-    ]
-  },
-  {
-    id: 3,
-    title: 'Low Stock Alert',
-    message: 'Cat litter inventory is running low. Only 5 units remaining.',
-    type: 'warning',
-    read: false,
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-    actions: [
-      { label: 'Reorder', primary: true, action: 'reorder', data: { productId: 789 } },
-      { label: 'View Inventory', primary: false, action: 'view-inventory' }
-    ]
-  },
-  {
-    id: 4,
-    title: 'System Maintenance',
-    message: 'Scheduled maintenance will occur tonight from 11 PM to 1 AM.',
-    type: 'info',
-    read: true,
-    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
-  },
-  {
-    id: 5,
-    title: 'Payment Failed',
-    message: 'Payment processing failed for order #12340. Customer needs to update payment method.',
-    type: 'error',
-    read: true,
-    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-    actions: [
-      { label: 'Contact Customer', primary: true, action: 'contact-customer', data: { orderId: 12340 } }
-    ]
-  }
-])
 
-const unreadNotifications = computed(() =>
-  notifications.value.filter(n => !n.read).length
-)
+// Limit notifications in drawer to 5 most recent
+const drawerNotifications = computed(() => {
+  return realNotifications.value.slice(0, 5)
+})
+
+// Combined unread count for notification badge (admin notifications + unread messages)
+const totalUnreadCount = computed(() => {
+  return realUnreadCount.value + totalUnreadMessages.value
+})
+
+// Old notification data removed - now using real notifications from composable
 
 // Mobile breakpoint detection
 const isMobile = computed(() => windowWidth.value <= 768)
@@ -564,8 +849,15 @@ const isTablet = computed(() => windowWidth.value <= 1024 && windowWidth.value >
 const sidebarPermanent = computed(() => !isMobile.value)
 const sidebarTemporary = computed(() => isMobile.value)
 
-const isDark = computed(() => theme.global.current.value.dark)
-const userAvatar = computed(() => authStore.user?.user_metadata?.avatar_url || null)
+const isDark = computed(() => themeStore.isDark)
+const userAvatar = computed(() => {
+  // Use profile picture from database if available
+  if (profileData.value.profilePic) {
+    return profileData.value.profilePic
+  }
+  // Fallback to auth metadata
+  return authStore.user?.user_metadata?.avatar_url || null
+})
 const userName = computed(() => {
   if (authStore.adminUser) {
     return authStore.adminUser.email?.split('@')[0] || 'Admin User'
@@ -601,66 +893,181 @@ const breadcrumbs = computed(() => {
   }))
 })
 
-const mainNavItems = [
+const mainNavItems = computed(() => [
   { title: 'Dashboard', icon: 'mdi-view-dashboard', to: '/dashboard', value: 'dashboard' },
   { title: 'Analytics', icon: 'mdi-chart-line', to: '/analytics', value: 'analytics' },
-  { title: 'Messages', icon: 'mdi-message', to: '/messages', value: 'messages', badge: 5 },
-  { title: 'Notifications', icon: 'mdi-bell', to: '/notifications', value: 'notifications', badge: 3 }
-]
+  { title: 'Messages', icon: 'mdi-message', to: '/messages', value: 'messages', badge: totalUnreadMessages.value > 0 ? totalUnreadMessages.value : undefined },
+  { title: 'Notifications', icon: 'mdi-bell', to: '/notifications', value: 'notifications', badge: realUnreadCount.value > 0 ? realUnreadCount.value : undefined }
+])
 
-const managementNavItems = [
+// All navigation items
+const allNavItems = [
   { title: 'Users', icon: 'mdi-account-group', to: '/users', value: 'users' },
   { title: 'Pets', icon: 'mdi-paw', to: '/pets', value: 'pets' },
   { title: 'Appointments', icon: 'mdi-calendar-clock', to: '/appointments', value: 'appointments' },
   { title: 'Products', icon: 'mdi-package-variant', to: '/products', value: 'products' },
   { title: 'Orders', icon: 'mdi-shopping', to: '/orders', value: 'orders' },
-  { title: 'Settings', icon: 'mdi-cog', to: '/settings', value: 'settings' },
-  { title: 'State Test', icon: 'mdi-test-tube', to: '/state-test', value: 'state-test' }
+  { title: 'Admin Management', icon: 'mdi-shield-account-outline', to: '/admin-management', value: 'admin-management' },
+  { title: 'Settings', icon: 'mdi-cog', to: '/settings', value: 'settings' }
 ]
 
+// Filtered navigation items based on role
+const managementNavItems = computed(() => {
+  return allNavItems.filter(item => visibleNavItems.value.includes(item.value))
+})
+
 const toggleTheme = () => {
-  theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'
+  // Prevent rapid theme switching during transitions
+  if (themeStore.isTransitioning) {
+    return
+  }
+  themeStore.toggleTheme()
 }
 
 const handleLogout = async () => {
-  await authStore.signOut()
-  router.push('/login')
+  try {
+    await authStore.signOut()
+    toast.success('Successfully logged out')
+    router.push('/login')
+  } catch (error) {
+    toast.error('Failed to logout')
+  }
 }
 
-const handleGlobalSearch = async (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const query = target.value.trim()
+// Navigate to notifications page and close drawer
+const navigateToNotifications = () => {
+  showNotifications.value = false
+  router.push('/notifications')
+}
 
-  if (query.length < 2) return
+// Profile modal functions
+const openProfileModal = () => {
+  loadProfileData()
+  showProfileModal.value = true
+}
+
+const closeProfileModal = () => {
+  showProfileModal.value = false
+  // Reset form data
+  profileData.value = {
+    firstName: '',
+    lastName: '',
+    username: '',
+    email: '',
+    phone: '',
+    mobile: '',
+    bio: '',
+    role: 'Administrator',
+    profilePic: null
+  }
+}
+
+const loadProfileData = async () => {
+  const adminEmail = authStore.adminUser?.email
+  if (!adminEmail) {
+    toast.error('Admin user not found')
+    return
+  }
 
   try {
-    // Import the dashboard service dynamically to avoid circular imports
-    const { DashboardService } = await import('@/services/dashboard')
-    const results = await DashboardService.searchGlobal(query, 5)
+    const { data: profile, error } = await ApiService.getCurrentAdminProfile(adminEmail)
 
-    // For now, just log the results. In a full implementation,
-    // you would show these in a dropdown or navigate to results
-    console.log('Search results:', results)
+    if (error) {
+      // Fallback to basic data from auth
+      const emailParts = adminEmail.split('@')[0].split('.')
 
-    // Navigate to the first result if Enter is pressed
-    if (results.length > 0) {
-      const firstResult = results[0]
-      switch (firstResult.type) {
-        case 'user':
-          router.push(`/users/${firstResult.id}`)
-          break
-        case 'pet':
-          router.push(`/pets/${firstResult.id}`)
-          break
-        case 'order':
-          router.push(`/orders/${firstResult.id}`)
-          break
+      profileData.value = {
+        firstName: emailParts[0]?.charAt(0).toUpperCase() + emailParts[0]?.slice(1) || '',
+        lastName: emailParts[1]?.charAt(0).toUpperCase() + emailParts[1]?.slice(1) || '',
+        username: emailParts[0] || '',
+        email: adminEmail,
+        phone: '',
+        bio: '',
+        role: authStore.adminUser?.role || 'Administrator',
+        profilePic: null
+      }
+      return
+    }
+
+    if (profile) {
+      profileData.value = {
+        firstName: profile.first_name || '',
+        lastName: profile.last_name || '',
+        username: profile.username || '',
+        email: profile.email || '',
+        phone: profile.phone_number || '',
+        bio: profile.bio || '',
+        role: profile.role || 'Administrator',
+        profilePic: profile.profile_pic
       }
     }
   } catch (error) {
-    console.error('Search error:', error)
+    toast.error('Failed to load profile data')
   }
 }
+
+const saveProfile = async () => {
+  const adminEmail = authStore.adminUser?.email
+  if (!adminEmail) {
+    toast.error('Admin user not found')
+    return
+  }
+
+  savingProfile.value = true
+  try {
+    const { data, error } = await ApiService.updateAdminProfile(adminEmail, profileData.value)
+
+    if (error) {
+      throw error
+    }
+
+    toast.success('Profile updated successfully')
+    closeProfileModal()
+  } catch (error) {
+    toast.error('Failed to update profile')
+  } finally {
+    savingProfile.value = false
+  }
+}
+
+const openPasswordChangeDialog = () => {
+  showPasswordDialog.value = true
+}
+
+const closePasswordDialog = () => {
+  showPasswordDialog.value = false
+  passwordData.value = {
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  }
+}
+
+const changePassword = async () => {
+  const adminEmail = authStore.adminUser?.email
+  if (!adminEmail) {
+    toast.error('Admin user not found')
+    return
+  }
+
+  changingPassword.value = true
+  try {
+    const { data, error } = await ApiService.updateAdminPassword(adminEmail, passwordData.value.newPassword)
+
+    if (error) {
+      throw error
+    }
+
+    toast.success('Password changed successfully')
+    closePasswordDialog()
+  } catch (error) {
+    toast.error('Failed to change password')
+  } finally {
+    changingPassword.value = false
+  }
+}
+
+
 
 const isActiveRoute = (to: string) => {
   // Enhanced active route detection for better highlighting
@@ -693,9 +1100,6 @@ const handleNavClick = (item: any) => {
   if ('vibrate' in navigator && isMobile.value) {
     navigator.vibrate(10)
   }
-
-  // Log navigation for debugging (can be removed in production)
-  console.log('Navigating to:', item.to)
 }
 
 // Enhanced keyboard navigation support
@@ -727,64 +1131,13 @@ const handleKeyboardNavigation = (event: KeyboardEvent) => {
   }
 }
 
-const getNotificationColor = (type: string) => {
-  switch (type) {
-    case 'error': return 'error'
-    case 'warning': return 'warning'
-    case 'success': return 'success'
-    default: return 'info'
-  }
-}
-
-const getNotificationIcon = (type: string) => {
-  switch (type) {
-    case 'error': return 'mdi-alert-circle'
-    case 'warning': return 'mdi-alert'
-    case 'success': return 'mdi-check-circle'
-    case 'info': return 'mdi-information'
-    default: return 'mdi-bell'
-  }
-}
-
-// Notification management functions
-const markAsRead = (notification: any) => {
-  notification.read = true
-}
-
+// Notification management functions (using composable functions)
 const markAsUnread = (notification: any) => {
-  notification.read = false
+  // Mark as unread functionality would be implemented here
 }
 
-const markAllAsRead = () => {
-  notifications.value.forEach(notification => {
-    notification.read = true
-  })
-}
-
-// Simple notification drawer toggle
 const toggleNotifications = () => {
-  console.log('Toggle notifications clicked', {
-    current: showNotifications.value,
-    isMobile: isMobile.value,
-    windowWidth: windowWidth.value
-  })
   showNotifications.value = !showNotifications.value
-  console.log('New state:', showNotifications.value)
-
-  // Debug: Check if drawer element exists and its classes
-  setTimeout(() => {
-    const drawerElement = document.querySelector('.notifications-drawer')
-    if (drawerElement) {
-      console.log('Drawer element classes:', drawerElement.className)
-      console.log('Drawer computed styles:', {
-        transform: getComputedStyle(drawerElement).transform,
-        visibility: getComputedStyle(drawerElement).visibility,
-        opacity: getComputedStyle(drawerElement).opacity,
-        right: getComputedStyle(drawerElement).right,
-        display: getComputedStyle(drawerElement).display
-      })
-    }
-  }, 100)
 }
 
 // Close notification drawer safely
@@ -792,41 +1145,12 @@ const closeNotifications = () => {
   showNotifications.value = false
 }
 
-const deleteNotification = (notification: any) => {
-  const index = notifications.value.findIndex(n => n.id === notification.id)
-  if (index > -1) {
-    notifications.value.splice(index, 1)
-  }
-}
+// deleteNotification is now handled by the composable (deleteRealNotification)
 
-const handleNotificationAction = (notification: any, action: any) => {
-  console.log('Notification action:', action, 'for notification:', notification)
-
-  switch (action.action) {
-    case 'view-order':
-      router.push(`/orders/${action.data.orderId}`)
-      break
-    case 'view-appointment':
-      router.push(`/appointments/${action.data.appointmentId}`)
-      break
-    case 'reorder':
-      router.push(`/products/${action.data.productId}`)
-      break
-    case 'view-inventory':
-      router.push('/inventory')
-      break
-    case 'contact-customer':
-      router.push(`/orders/${action.data.orderId}`)
-      break
-    case 'dismiss':
-      markAsRead(notification)
-      break
-    default:
-      console.log('Unknown action:', action.action)
-  }
-
-  // Close notifications drawer after action
-  if (action.action !== 'dismiss') {
+const handleNotificationAction = (notification: any) => {
+  // Navigate to the action URL if available
+  if (notification.action_url) {
+    router.push(notification.action_url)
     closeNotifications()
   }
 }
@@ -897,12 +1221,24 @@ const handleNotificationDrawerResize = (
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   // Initialize sidebar store with current window width
   sidebarStore.initialize(windowWidth.value)
 
-  // Load notifications
-  // This would typically fetch from your API
+  // Load notifications (limit to 5 for drawer performance)
+  try {
+    await loadNotifications(1, 5)
+  } catch (error) {
+    // Silent fail for notifications loading
+  }
+
+  // Setup messaging real-time subscriptions for unread message count
+  try {
+    await loadConversations(1, 50)
+    setupMessagingSubscriptions()
+  } catch (error) {
+    // Silent fail for messaging setup
+  }
 
   // Add window resize listener
   window.addEventListener('resize', handleResize)
@@ -910,30 +1246,21 @@ onMounted(() => {
   // Add keyboard navigation listener
   window.addEventListener('keydown', handleKeyboardNavigation)
 
-  // Restore scroll position after component is mounted
-  restoreScrollPosition()
+  // Note: Scroll position restoration is handled by useScrollPosition composable
 
-  // Expose debugging methods to global scope for testing
-  if (typeof window !== 'undefined') {
-    ;(window as any).debugNotifications = {
-      toggle: toggleNotifications,
-      close: closeNotifications,
-      getState: () => ({
-        showNotifications: showNotifications.value,
-        isMobile: isMobile.value,
-        isTablet: isTablet.value,
-        windowWidth: windowWidth.value
-      }),
-      forceOpen: () => {
-        showNotifications.value = true
-      }
-    }
-  }
+
 })
 
 onUnmounted(() => {
   // Save scroll position before unmounting
   saveScrollPosition()
+
+  // Clean up messaging subscriptions
+  try {
+    cleanupMessaging()
+  } catch (error) {
+    // Silent fail for cleanup
+  }
 
   // Clean up resize timeout
   if (resizeTimeout) {
@@ -1089,6 +1416,16 @@ watch(() => route.path, (newPath) => {
   scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
 }
 
+/* Hide scrollbar in rail mode */
+.modern-sidebar.v-navigation-drawer--rail .sidebar-nav {
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.modern-sidebar.v-navigation-drawer--rail .sidebar-nav::-webkit-scrollbar {
+  display: none;
+}
+
 .sidebar-nav::-webkit-scrollbar {
   width: 4px;
 }
@@ -1117,6 +1454,15 @@ watch(() => route.path, (newPath) => {
   letter-spacing: 0.1em;
   color: rgba(0, 0, 0, 0.6);
   margin: 0 0 8px 16px;
+}
+
+/* Rail mode section spacing */
+.modern-sidebar.v-navigation-drawer--rail .nav-section {
+  margin-bottom: 16px;
+}
+
+.modern-sidebar.v-navigation-drawer--rail .nav-section:first-child {
+  margin-top: 8px;
 }
 
 .nav-items {
@@ -1179,9 +1525,25 @@ watch(() => route.path, (newPath) => {
   position: relative;
 }
 
+/* Rail mode navigation item styling */
+.modern-sidebar.v-navigation-drawer--rail .nav-item-content {
+  justify-content: center;
+  padding: 12px 8px;
+}
+
+.modern-sidebar.v-navigation-drawer--rail .nav-item {
+  margin: 0 4px;
+  border-radius: 8px;
+}
+
 .nav-item-icon {
   margin-right: 12px;
   transition: transform 0.2s ease;
+}
+
+/* Rail mode icon styling */
+.modern-sidebar.v-navigation-drawer--rail .nav-item-icon {
+  margin-right: 0;
 }
 
 .nav-item:hover .nav-item-icon {
@@ -1268,34 +1630,7 @@ watch(() => route.path, (newPath) => {
   margin: 0 8px;
 }
 
-.app-bar-search {
-  max-width: 400px;
-  width: 100%;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
-.search-field {
-  border-radius: 12px !important;
-}
-
-.search-field :deep(.v-field) {
-  border-radius: 12px !important;
-  background: rgba(var(--v-theme-surface), 0.8) !important;
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(var(--v-theme-outline), 0.2) !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.search-field :deep(.v-field:hover) {
-  border-color: rgba(var(--v-theme-primary), 0.3) !important;
-  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.1) !important;
-}
-
-.search-field :deep(.v-field--focused) {
-  border-color: rgb(var(--v-theme-primary)) !important;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1) !important;
-}
 
 .app-bar-actions {
   display: flex;
@@ -1356,6 +1691,14 @@ watch(() => route.path, (newPath) => {
   background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%) !important;
   border-left: 1px solid rgba(0, 0, 0, 0.08) !important;
   box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.notifications-drawer :deep(.v-navigation-drawer__content) {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
 }
 
 /* Ensure drawer is completely hidden when not active */
@@ -1455,7 +1798,31 @@ watch(() => route.path, (newPath) => {
 .notifications-content {
   flex: 1;
   overflow-y: auto;
-  max-height: calc(100vh - 140px);
+  max-height: calc(100vh - 200px); /* Account for header and footer */
+  min-height: 0;
+}
+
+.notifications-drawer-footer {
+  flex-shrink: 0;
+  background: rgba(var(--v-theme-surface), 0.95);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(var(--v-theme-outline), 0.08);
+}
+
+.notifications-footer-content {
+  padding: 16px 20px 20px;
+}
+
+.view-all-btn {
+  border-radius: 12px !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.view-all-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.25) !important;
 }
 
 .notifications-empty {
@@ -2039,5 +2406,71 @@ watch(() => route.path, (newPath) => {
 
 .v-theme--dark .notification-item__message {
   color: rgb(var(--v-theme-on-surface-variant));
+}
+
+/* Profile Modal Styling */
+.profile-modal {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.modal-header {
+  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.05) 0%, rgba(var(--v-theme-primary), 0.02) 100%);
+  border-bottom: 1px solid rgba(var(--v-theme-primary), 0.1);
+}
+
+.profile-section {
+  padding: 20px;
+  border-radius: 12px;
+  background: rgba(var(--v-theme-surface), 0.5);
+  border: 1px solid rgba(var(--v-theme-outline), 0.1);
+}
+
+.enhanced-field :deep(.v-field) {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+}
+
+.enhanced-field :deep(.v-field:hover) {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.enhanced-field :deep(.v-field--focused) {
+  box-shadow: 0 4px 16px rgba(var(--v-theme-primary), 0.2);
+}
+
+.enhanced-field :deep(.v-field--error) {
+  box-shadow: 0 4px 16px rgba(var(--v-theme-error), 0.2);
+}
+
+.save-btn {
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.3);
+  transition: all 0.3s ease;
+}
+
+.save-btn:hover {
+  box-shadow: 0 6px 16px rgba(var(--v-theme-primary), 0.4);
+  transform: translateY(-1px);
+}
+
+/* Dark theme profile modal */
+.v-theme--dark .profile-modal {
+  background: rgb(var(--v-theme-surface));
+}
+
+.v-theme--dark .modal-header {
+  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.1) 0%, rgba(var(--v-theme-primary), 0.05) 100%);
+  border-bottom-color: rgba(var(--v-theme-primary), 0.2);
+}
+
+.v-theme--dark .profile-section {
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-color: rgba(var(--v-theme-outline), 0.2);
+}
+
+.v-theme--dark .enhanced-field :deep(.v-field) {
+  background: rgba(var(--v-theme-surface-variant), 0.5);
+  border-color: rgba(var(--v-theme-outline), 0.2);
 }
 </style>

@@ -443,7 +443,7 @@ const loadOwners = async (search = '') => {
       display_name: getOwnerDisplayName(user)
     }))
   } catch (error) {
-    console.error('Failed to load owners:', error)
+
     toast.error('Failed to load pet owners')
   } finally {
     loadingOwners.value = false
@@ -541,7 +541,7 @@ const handleSubmit = async () => {
     }, 1500)
 
   } catch (error) {
-    console.error('Form submission error:', error)
+
     submitError.value = 'Failed to save pet. Please try again.'
   }
 }
