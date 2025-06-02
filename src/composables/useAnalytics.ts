@@ -243,14 +243,14 @@ export function useAnalytics() {
 
   // Utility functions
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-PH', {
       style: 'currency',
-      currency: 'USD'
-    }).format(amount)
+      currency: 'PHP'
+    }).format(amount).replace('PHP', '₱').replace('₱ ', '₱')
   }
 
   const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('en-US').format(num)
+    return new Intl.NumberFormat('en-PH').format(num)
   }
 
   const formatPercentage = (num: number) => {

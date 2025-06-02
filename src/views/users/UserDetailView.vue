@@ -194,8 +194,8 @@
                   </v-col>
                   <v-col cols="6" md="3">
                     <v-card class="stat-card text-center pa-4" rounded="lg" variant="tonal" color="success">
-                      <v-icon icon="mdi-currency-usd" size="32" color="success" class="mb-2" />
-                      <div class="text-h4 font-weight-bold text-success">$0</div>
+                      <v-icon icon="mdi-currency-php" size="32" color="success" class="mb-2" />
+                      <div class="text-h4 font-weight-bold text-success">₱0</div>
                       <div class="text-body-2 text-on-surface-variant">Total Spent</div>
                     </v-card>
                   </v-col>
@@ -259,7 +259,7 @@
                           <div class="text-body-2 text-on-surface-variant">{{ formatDate(order.created_at) }}</div>
                         </div>
                         <div class="text-end">
-                          <div class="text-h6 font-weight-bold">${{ order.total_amount || '0.00' }}</div>
+                          <div class="text-h6 font-weight-bold">₱{{ Number(order.total_amount || 0).toLocaleString() }}</div>
                           <v-chip
                             :color="getOrderStatusColor(order.status)"
                             size="small"

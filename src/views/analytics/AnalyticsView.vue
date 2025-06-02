@@ -119,7 +119,7 @@
         <v-card class="chart-card" rounded="xl" elevation="2">
           <v-card-title class="pa-6 pb-4">
             <div class="d-flex align-center">
-              <v-icon icon="mdi-currency-usd" class="me-2" />
+              <v-icon icon="mdi-currency-php" class="me-2" />
               <span class="text-h6 font-weight-bold">Revenue Trends</span>
             </div>
           </v-card-title>
@@ -500,7 +500,7 @@ const keyMetrics = computed(() => [
     title: 'Revenue',
     value: formatCurrency(metrics.value.totalRevenue),
     trend: metrics.value.revenueTrend,
-    icon: 'mdi-currency-usd',
+    icon: 'mdi-currency-php',
     color: 'warning',
     subtitle: `${metrics.value.revenueTrend >= 0 ? '+' : ''}${metrics.value.revenueTrend.toFixed(1)}% from last period`
   },

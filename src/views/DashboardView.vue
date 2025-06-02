@@ -408,7 +408,7 @@ const stats = computed(() => [
     title: 'Revenue',
     value: formatCurrency(metrics.value.totalRevenue),
     trend: metrics.value.revenueTrend,
-    icon: 'mdi-currency-usd',
+    icon: 'mdi-currency-php',
     color: 'warning',
     subtitle: `${metrics.value.revenueTrend >= 0 ? '+' : ''}${metrics.value.revenueTrend.toFixed(1)}% from last month`,
     route: '/orders'

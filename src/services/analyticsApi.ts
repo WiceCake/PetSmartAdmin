@@ -323,7 +323,7 @@ export class AnalyticsApiService {
         labels,
         datasets: [
           {
-            label: 'Revenue ($)',
+            label: 'Revenue (₱)',
             data,
             borderColor: '#10B981',
             backgroundColor: 'rgba(16, 185, 129, 0.1)',
@@ -422,7 +422,7 @@ export class AnalyticsApiService {
             id: `order-${order.id}`,
             type: 'order',
             title: 'New Order',
-            description: `Order #${order.id.slice(0, 8)} - $${order.total_amount} by ${customerInfo}`,
+            description: `Order #${order.id.slice(0, 8)} - ₱${Number(order.total_amount).toLocaleString()} by ${customerInfo}`,
             timestamp: new Date(order.created_at),
             icon: 'mdi-shopping',
             color: 'success'
