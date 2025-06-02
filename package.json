@@ -11,7 +11,8 @@
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
     "format": "prettier --write src/",
     "type-check": "vue-tsc --noEmit",
-    "deploy-check": "node scripts/deploy-check.js"
+    "deploy-check": "node scripts/deploy-check.js",
+    "test-routing": "node scripts/test-routing.js"
   },
   "dependencies": {
     "@mdi/font": "^7.3.67",
